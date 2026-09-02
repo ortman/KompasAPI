@@ -17,8 +17,8 @@ public:
 		OZ = 2
 	};
 	static int TYPE;
-	Plane(const Node& node) : Node(node.pEntity, node.pDefinition) {}
-	Plane(IUnknown* pEntity, IDispatch* pDefinition = NULL) : Node(pEntity, pDefinition) {}
+	//Plane(const Node& node) : Node(node.pEntity, node.pDefinition) {}
+	//Plane(IUnknown* pEntity, IDispatch* pDefinition = NULL) : Node(pEntity, pDefinition) {}
 	Vertex::Point3D GetVector(AxisType type);
 	Plane::Point2D Projection(const Vertex::Point3D& point);
 	Vertex::Point3D Projection(const Plane::Point2D& point);
@@ -27,15 +27,15 @@ public:
 class ParallelPlane : public Plane {
 public:
 	static int TYPE;
-	ParallelPlane(const Node& node) : Plane(node.pEntity, node.pDefinition) {}
-	ParallelPlane(IUnknown* pEntity, IDispatch* pDefinition, const Face& planarFace, const Vertex& point, bool show = false);
+	//ParallelPlane(const Node& node) : Plane(node.pEntity, node.pDefinition) {}
+	//ParallelPlane(IUnknown* pEntity, IDispatch* pDefinition, const Face& planarFace, const Vertex& point, bool show = false);
 };
 
 class EdgePointPlane : public Plane {
 public:
 	static int TYPE;
-	EdgePointPlane(const Node& node) : Plane(node.pEntity, node.pDefinition) {}
-	EdgePointPlane(IUnknown* pEntity, IDispatch* pDefinition, const Axis& axis, const Vertex& point, bool show = false);
+	//EdgePointPlane(const Node& node) : Plane(node.pEntity, node.pDefinition) {}
+	//EdgePointPlane(IUnknown* pEntity, IDispatch* pDefinition, const Axis& axis, const Vertex& point, bool show = false);
 };
 
 #endif

@@ -2,10 +2,10 @@
 #include <windows.h>
 
 #ifdef _MSC_VER
-	#import "ksConstants.tlb" rename_namespace("KConst") no_implementation
-	#import "ksConstants3D.tlb" rename_namespace("KConst3D") no_implementation
-	#import "kAPI5.tlb" named_guids rename_namespace("K5") no_implementation
-	#import "kAPI7.tlb" named_guids rename_namespace("K7") no_implementation
+	#import "ksConstants.tlb" rename_namespace("KConst") no_implementation no_registry
+	#import "ksConstants3D.tlb" rename_namespace("KConst3D") no_implementation no_registry
+	#import "kAPI5.tlb" named_guids rename_namespace("K5") no_implementation no_registry
+	#import "kAPI7.tlb" named_guids rename_namespace("K7") no_implementation no_registry
 #else
 	#include <ksConstants.tlh>
 	#include <ksConstants3D.tlh>
