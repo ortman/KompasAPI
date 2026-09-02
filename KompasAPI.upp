@@ -1,0 +1,97 @@
+charset "UTF-8";
+
+library
+	C:/KSDK24/lib64/kAPI7,
+	C:/KSDK24/lib64/kAPI5,
+	C:/KSDK24/lib64/kAPI3D5,
+	C:/KSDK24/lib64/kAPI2D5;
+
+library(WIN32) "kernel32 user32 advapi32 shell32 winmm";
+
+options(WIN32) -DKAPI5;
+
+options(WIN32) -DKAPI7;
+
+options(UNIX) -DKSAPI;
+
+include
+	C:/KSDK24/Include,
+	C:/KSDK24,
+	C:/KSDK24/lib;
+
+file
+	Include readonly separator,
+	Include/Kompas3D.h,
+	Include/Doc3D.h,
+	Include/Part.h,
+	Include/Node.h,
+	Include/Panel.h,
+	Include/KompasEvent.h,
+	Include/Process3D.h,
+	Include/Node/Vertex.h,
+	Include/Node/Face.h,
+	Include/Node/Plane.h,
+	Include/Node/Edge.h,
+	Include/Node/Axis.h,
+	Include/Node/Sketch.h,
+	Include/Node/CutExtrusion.h,
+	Include/Node/CutEvolution.h,
+	Include/Node/CutRotated.h,
+	Include/Node/BaseExtrusion.h,
+	Include/Node/NodeMacro.h,
+	Include/Node/MeshCopy.h,
+	Include/Node/CircularCopy.h,
+	Api7 readonly separator,
+	Api7/ComKompas.cpp,
+	Api7/ComKompas.h,
+	Api7/Kompas3D.hpp charset "UTF-8-BOM",
+	Api7/Doc3D.hpp,
+	Api7/Part.cpp,
+	Api7/Node.cpp,
+	Api7/Panel.cpp,
+	Api7/Process3D.cpp,
+	Api7/Node/Vertex.cpp,
+	Api7/Node/Face.cpp,
+	Api7/Node/Plane.cpp,
+	Api7/Node/Edge.cpp,
+	Api7/Node/Axis.cpp,
+	Api7/Node/Sketch.cpp,
+	Api7/Node/CutExtrusion.cpp,
+	Api7/Node/CutEvolution.cpp,
+	Api7/Node/CutRotated.cpp,
+	Api7/Node/BaseExtrusion.cpp,
+	Api7/Node/NodeMacro.cpp,
+	Api7/Node/MeshCopy.cpp,
+	Api7/Node/CircularCopy.cpp,
+	Api7/Node/ThreadDesignation.h,
+	Api7/Node/ThreadDesignation.cpp,
+	Api7/Node/CylindricSpiral.h,
+	Api7/Node/CylindricSpiral.cpp,
+	Ksapi readonly separator,
+	Ksapi/Kompas3D.hpp,
+	Ksapi/Doc3D.cpp,
+	Ksapi/Part.cpp,
+	Ksapi/Node.cpp,
+	Ksapi/Panel.cpp,
+	Ksapi/Process3D.cpp,
+	Ksapi/Node/Vertex.cpp,
+	Ksapi/Node/Face.cpp,
+	Ksapi/Node/Plane.cpp,
+	Ksapi/Node/Edge.cpp,
+	Ksapi/Node/Axis.cpp,
+	Ksapi/Node/Sketch.cpp,
+	Ksapi/Node/CutExtrusion.cpp,
+	Ksapi/Node/CutEvolution.cpp,
+	Ksapi/Node/CutRotated.cpp,
+	Ksapi/Node/BaseExtrusion.cpp,
+	Ksapi/Node/NodeMacro.cpp,
+	Ksapi/Node/MeshCopy.cpp,
+	Ksapi/Node/CircularCopy.cpp,
+	Ksapi/Node/ThreadDesignation.h,
+	Ksapi/Node/ThreadDesignation.cpp,
+	Ksapi/Node/CylindricSpiral.h,
+	Ksapi/Node/CylindricSpiral.cpp;
+
+mainconfig
+	"KompasAPI" = "DLL";
+

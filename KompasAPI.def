@@ -1,0 +1,4 @@
+LIBRARY KompasAPI.dll
+EXPORTS
+ LIBRARYID               @1
+ LIBRARYENTRY            @2
