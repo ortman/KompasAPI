@@ -17,7 +17,7 @@ public:
 
 	static inline int TYPE = 58; /* o3d_thread */
 	ThreadDesignation(std::unique_ptr<NodeImpl> p) : Node(std::move(p)) {}
-	//ThreadDesignation(const Node& node) : Node(node) {}
+	ThreadDesignation(Node& node) : Node(std::move(node.node)) {}
 	double GetLength() const {
 		ThreadDesignationImpl* thread = dynamic_cast<ThreadDesignationImpl*>(node.get());
 		return thread ? thread->GetLength() : 0.0;

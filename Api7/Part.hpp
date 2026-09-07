@@ -30,9 +30,7 @@ public:
 		return Kompas3D::Cp1251ToUtf8(part->name);
 	}
 	
-	std::unique_ptr<Node::NodeImpl> CreateImpl(int type) {
-		K5::ksEntityPtr entity = part->NewEntity(type);
-		if (!entity) return nullptr;
+	std::unique_ptr<Node::NodeImpl> EntityToNode(K5::ksEntityPtr entity, int type) {
 		switch (type) {
 			case 5:  return std::make_unique<SketchApi7>(entity, nullptr);
 			case 6:  return std::make_unique<FaceApi7>(entity, nullptr);
@@ -50,15 +48,48 @@ public:
 			case 56: return std::make_unique<CylindricSpiralApi7>(entity, nullptr);
 			case 58: return std::make_unique<ThreadDesignationApi7>(entity, nullptr);
 			case 63: return std::make_unique<NodeMacroApi7>(entity, nullptr);
-			default:
-				throw Kompas3DException("Создание неизвестного объекта " + std::to_string(type));
-				//return std::make_unique<NodeApi7>(entity, nullptr);
+			default: return std::make_unique<NodeApi7>(entity, nullptr);
 		}
 	}
+	
+	std::unique_ptr<Node::NodeImpl> CreateImpl(int type) {
+		K5::ksEntityPtr entity = part->NewEntity(type);
+		if (!entity) return nullptr;
+		return EntityToNode(entity, type);
+	}
 
-	virtual Plane GetPlane(int type) {
+	Plane GetPlane(int type) {
 		K5::ksEntityPtr entity = part->GetDefaultEntity(type);
 		return Plane(std::make_unique<PlaneApi7>(entity, nullptr));
+	}
+	
+	Axis GetAxis(int type) {
+		K5::ksEntityPtr entity = part->GetDefaultEntity(type);
+		return Axis(std::make_unique<AxisApi7>(entity, nullptr));
+	}
+	std::vector<Node> GetNodes() {
+		std::vector<Node> nodes;
+		if (!part) return nodes;
+		K5::ksFeaturePtr topFeature = part->GetFeature();
+		if (!topFeature) return nodes;
+		K5::ksFeatureCollectionPtr subFeatures = topFeature->SubFeatureCollection(true, true);
+		if (!subFeatures) return nodes;
+		int count = subFeatures->GetCount();
+		for (int i = 0; i < count; ++i) {
+			K5::ksFeaturePtr feature = subFeatures->GetByIndex(i);
+			K5::ksEntityPtr entity = feature->GetObject();
+			if (entity) {
+				nodes.push_back(Node(EntityToNode(entity, entity->type)));
+			}
+		}
+		return nodes;
+	}
+	void Remove(const Node& n) {
+		NodeApi7* n7 = dynamic_cast<NodeApi7*>(n.node.get());
+		if (n7 && doc) {
+			K5::ksEntityPtr entity = n7->entity;
+			doc->DeleteObject(entity);
+		}
 	}
 };
 
@@ -143,59 +174,6 @@ public:
  * 	if (!entity) return nullptr;
  * 	entity->AddRef();
  * 	return entity;
- * }
- * 
- * Part& Part::Remove(Node node) {
- * 	K5::ksDocument3DPtr doc = pDoc;
- * 	if (doc) {
- * 		K5::ksEntityPtr entity = node.pEntity;
- * 		doc->DeleteObject(entity);
- * 	}
- * 	return *this;
- * }
- * 
- * IUnknown* Part::GetDefaultEntity(int type) {
- * 	K5::ksPartPtr part = pPart;
- * 	if (!part) return nullptr;
- * 	K5::ksEntityPtr entity = part->GetDefaultEntity(type);
- * 	entity->AddRef();
- * 	return entity;
- * }
- * 
- * Plane Part::GetPlaneXOY() {
- * 	IUnknown* entity = GetDefaultEntity(KConst3D::o3d_planeXOY);
- * 	if (!entity) return nullptr;
- * 	return Plane(entity);
- * }
- * 
- * Plane Part::GetPlaneXOZ() {
- * 	IUnknown* entity = GetDefaultEntity(KConst3D::o3d_planeXOZ);
- * 	if (!entity) return nullptr;
- * 	return Plane(entity);
- * }
- * 
- * Plane Part::GetPlaneYOZ() {
- * 	IUnknown* entity = GetDefaultEntity(KConst3D::o3d_planeYOZ);
- * 	if (!entity) return nullptr;
- * 	return Plane(entity);
- * }
- * 
- * Axis Part::GetAxisOX() {
- * 	IUnknown* entity = GetDefaultEntity(KConst3D::o3d_axisOX);
- * 	if (!entity) return nullptr;
- * 	return Axis(entity);
- * }
- * 
- * Axis Part::GetAxisOY() {
- * 	IUnknown* entity = GetDefaultEntity(KConst3D::o3d_axisOY);
- * 	if (!entity) return nullptr;
- * 	return Axis(entity);
- * }
- * 
- * Axis Part::GetAxisOZ() {
- * 	IUnknown* entity = GetDefaultEntity(KConst3D::o3d_axisOZ);
- * 	if (!entity) return nullptr;
- * 	return Axis(entity);
  * }
  * 
  * std::vector<Part::Variable> Part::GetVariables(bool isExternal) {

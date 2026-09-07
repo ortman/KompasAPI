@@ -24,7 +24,7 @@ public:
 		}
 		node->Create();
 	}
-	//CutExtrusion(const Node& node) : Node(node.pEntity, node.pDefinition) {}
+	CutExtrusion(Node& node) : Node(std::move(node.node)) {}
 	CutExtrusion() : Node(nullptr) {}
 	CutExtrusion& SetDepth1(double depth) {
 		CutExtrusionImpl* extrusion = dynamic_cast<CutExtrusionImpl*>(node.get());

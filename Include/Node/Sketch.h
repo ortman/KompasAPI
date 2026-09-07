@@ -79,7 +79,7 @@ public:
 		}
 		node->Create();
 	}
-	//Sketch(const Node& node) : Node(std::move(node.node)) {}
+	Sketch(Node& node) : Node(std::move(node.node)) {}
 	Plane::Point2D Projection(const Vertex::Point3D& point) {
 		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
 		return sketch ? sketch->Projection(point) : Plane::Point2D{0., 0.};

@@ -48,7 +48,8 @@ public:
 		}
 		node->Create();
 	}
-	//CircularCopy(const Node& node) : Node(node) {}
+	CircularCopy() : Node(nullptr) {}
+	CircularCopy(Node& node) : Node(std::move(node.node)) {}
 	CircularCopy& SetCircularParam(int count, double step, bool factor) {
 		CircularCopyImpl* copy = dynamic_cast<CircularCopyImpl*>(node.get());
 		if (copy) copy->SetCircularParam(count, step, factor);
