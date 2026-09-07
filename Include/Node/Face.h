@@ -5,15 +5,26 @@
 
 class Face : public Node {
 private:
-	class K3D_Face : public Node::K3D_Node {
+	class FaceImpl : virtual public Node::NodeImpl {
+	public:
+		virtual bool IsPlanar() = 0;
+		virtual bool IsCylinder() = 0;
 	};
 
 public:
-	static int TYPE;
-	Face(const Node& node) : Node(node) {}
-	Face(K3D_Face p) : Node(p) {}
-	bool IsPlanar();
-	bool IsCylinder();
+	static inline int TYPE = 6; /* o3d_face */
+	Face(std::unique_ptr<FaceImpl> p) : Node(std::move(p)) {
+		node->Create();
+	}
+	//Face(const Node& node) : Node(node) {}
+	bool IsPlanar() {
+		FaceImpl* face = dynamic_cast<FaceImpl*>(node.get());
+		return face ? face->IsPlanar() : false;
+	}
+	bool IsCylinder() {
+		FaceImpl* face = dynamic_cast<FaceImpl*>(node.get());
+		return face ? face->IsCylinder() : false;
+	}
 };
 
 #endif

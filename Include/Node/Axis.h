@@ -6,15 +6,24 @@
 
 class Axis : public Node {
 private:
-	class K3D_Axis : public Node::K3D_Node {
+	class AxisImpl : virtual public Node::NodeImpl {
+	public:
+		virtual Vertex::Point3D GetFirstPoint() = 0;
+		virtual Vertex::Point3D GetLastPoint() = 0;
 	};
 
 public:
 	static int TYPE;
-	Axis(const Node& node) : Node(node) {}
-	Axis(K3D_Axis p) : Node(p) {}
-	Vertex::Point3D GetFirstPoint();
-	Vertex::Point3D GetLastPoint();
+	//Axis(const Node& node) : Node(node) {}
+	Axis(std::unique_ptr<AxisImpl> p) : Node(std::move(p)) {}
+	Vertex::Point3D GetFirstPoint() {
+		AxisImpl* vertex = dynamic_cast<AxisImpl*>(node.get());
+		return vertex ? vertex->GetFirstPoint() : Vertex::Point3D{0, 0, 0};
+	}
+	Vertex::Point3D GetLastPoint() {
+		AxisImpl* vertex = dynamic_cast<AxisImpl*>(node.get());
+		return vertex ? vertex->GetLastPoint() : Vertex::Point3D{0, 0, 0};
+	}
 };
 
 /*

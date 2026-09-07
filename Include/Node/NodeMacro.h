@@ -9,7 +9,6 @@ public:
 	class NodeMacroImpl : virtual public Node::NodeImpl {
 	public:
 		virtual void Show(bool show) = 0;
-		virtual ~NodeMacroImpl() = default;
 	};
 	
 public:

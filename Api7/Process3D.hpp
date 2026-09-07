@@ -1,3 +1,5 @@
+#pragma once
+
 /*
  * #include "Process3D.h"
  * #include "Kompas3D.h"

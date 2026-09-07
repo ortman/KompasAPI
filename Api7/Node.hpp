@@ -1,5 +1,4 @@
-#ifndef _NODE_API7_HPP_
-#define _NODE_API7_HPP_
+#pragma once
 
 #include "../Include/Node.h"
 #include "../Include/Kompas3D.h"
@@ -75,5 +74,3 @@ public:
 		entity->Update();
 	}
 };
-
-#endif

@@ -3,6 +3,15 @@
 
 #include "Doc3D.h"
 #include "Node/Sketch.h"
+#include "Node/BaseExtrusion.h"
+#include "Node/CutExtrusion.h"
+//#include "Node/CutEvolution.h"
+//#include "Node/CutRotated.h"
+#include "Node/MeshCopy.h"
+//#include "Node/CircularCopy.h"
+//#include "Node/ThreadDesignation.h"
+//#include "Node/CylindricSpiral.h"
+
 //#include "Panel.h"
 
 class Kompas3D {
@@ -22,14 +31,6 @@ public:
 	Kompas3D() = delete;
 	static Doc3D GetActiveDocument3D() { return kompas->GetActiveDocument3D(); }
 	static Doc3D Open3D(std::string path, bool visible = true);
-/*
- * 	template <typename T>
- * 	static T GetParamStruct(int type);
- * 	template <typename T>
- * 	static T ToApi7(IUnknown* k5);
- * 	template <typename T>
- * 	static T ToApi5(IUnknown* k7);
- */
 	static void Message(const std::string& txt) { kompas->Message(txt); }
 	static void Error(const std::string& txt) { kompas->Error(txt); }
 	static std::string SystemPath(long type) { return kompas->SystemPath(type); }

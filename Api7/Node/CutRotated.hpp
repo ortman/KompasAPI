@@ -1,3 +1,5 @@
+#pragma once
+
 /*
  * #include "../Kompas3D.h"
  * #include "CutRotated.h"

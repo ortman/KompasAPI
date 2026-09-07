@@ -6,11 +6,11 @@
 #include "Doc3D.hpp"
 
 #include "Node/Sketch.hpp"
-//#include "Node/BaseExtrusion.hpp"
-//#include "Node/CutExtrusion.hpp"
+#include "Node/BaseExtrusion.hpp"
+#include "Node/CutExtrusion.hpp"
 //#include "Node/CutEvolution.hpp"
 //#include "Node/CutRotated.hpp"
-//#include "Node/MeshCopy.hpp"
+#include "Node/MeshCopy.hpp"
 //#include "Node/CircularCopy.hpp"
 //#include "Node/ThreadDesignation.hpp"
 //#include "Node/CylindricSpiral.hpp"
@@ -126,27 +126,6 @@
 //	return Doc3D(doc.GetInterfacePtr());
 //}
 //
-//template <typename T>
-//T Kompas3D::GetParamStruct(int type) {
-//	if (!Connect()) return nullptr;
-//	K5::KompasObjectPtr kompas(pKompas);
-//	return kompas->GetParamStruct(type);
-//}
-//
-//template <typename T>
-//T Kompas3D::ToApi7(IUnknown* k5) {
-//	if (!Connect()) return nullptr;
-//	K5::KompasObjectPtr kompas(pKompas);
-//	return kompas->TransferInterface(k5, KConst::ksAPI7Dual, 0);
-//}
-//
-//template <typename T>
-//T Kompas3D::ToApi5(IUnknown* k7) {
-//	if (!Connect()) return nullptr;
-//	K5::KompasObjectPtr kompas(pKompas);
-//	return kompas->TransferInterface(k7, KConst::ksAPI5Auto, 0);
-//}
-//
 //IUnknown* Kompas3D::CreatePropertyManager() {
 //	if (!Connect()) throw Kompas3DException("Kompas not connected");
 //	K7::IApplicationPtr kompas7(pKompas7);
@@ -166,51 +145,9 @@
 //	param.AddRef();
 //	return param.GetInterfacePtr();
 //}
-//
-//void Kompas3D::Message(const std::string& txt) {
-//	if (Connect()) {
-//		K5::KompasObjectPtr kompas(pKompas);
-//		kompas->ksMessage(Node::Utf8ToCp1251(txt).c_str());
-//	}
-//}
-//
-//void Kompas3D::Error(const std::string& txt) {
-//	if (Connect()) {
-//		K5::KompasObjectPtr kompas(pKompas);
-//		kompas->ksError(Node::Utf8ToCp1251(txt).c_str());
-//	}
-//}
-//
-//std::string Kompas3D::SystemPath(long type) {
-//	if (!Connect()) return std::string();
-//	K5::KompasObjectPtr kompas(pKompas);
-//	return Node::Cp1251ToUtf8(kompas->ksSystemPath(type));
-//}
 
 //KompasEvent<bool(Doc3D&, int)> Kompas3D::WhenCreateDocument;
 //KompasEvent<bool(Doc3D&, int)> Kompas3D::WhenOpenDocument;
-//
-//#define KOMPAS_PARAM(p) template K5::p##Ptr Kompas3D::GetParamStruct(int);
-//KOMPAS_PARAM(ksRectangleParam)
-//KOMPAS_PARAM(ksRegularPolygonParam)
-//KOMPAS_PARAM(ksEllipseParam)
-//KOMPAS_PARAM(ksEllipseArcParam)
-//KOMPAS_PARAM(ksEllipseArcParam1)
-//KOMPAS_PARAM(ksUserParam)
-//
-//#define KOMPAS_API7(p) template K7::p##Ptr Kompas3D::ToApi7(IUnknown*);
-//KOMPAS_API7(IEmbodimentsManager)
-//KOMPAS_API7(IThread)
-//KOMPAS_API7(IAxis3D)
-//KOMPAS_API7(ICutRotated)
-//KOMPAS_API7(IKompasDocument3D1)
-//KOMPAS_API7(IPart7)
-//KOMPAS_API7(IModelObject)
-//
-//#define KOMPAS_API5(p) template K5::p##Ptr Kompas3D::ToApi5(IUnknown*);
-//KOMPAS_API5(ksPart)
-//KOMPAS_API5(ksFaceDefinition)
-//KOMPAS_API5(ksEdgeDefinition)
 
 class Kompas3DApi7 : public Kompas3D::Kompas3DImpl {
 private:
@@ -280,6 +217,21 @@ public:
 	std::string SystemPath(long type) override {
 		return kompas5 ? Kompas3D::Cp1251ToUtf8(kompas5->ksSystemPath(type)) : std::string();
 	}
+	
+	template <typename T>
+	static T GetParamStruct(int type) {
+		return kompas5 ? kompas5->GetParamStruct(type) : nullptr;
+	}
+	
+	template <typename T>
+	static T ToApi7(IUnknown* k5) {
+		return kompas5 ? kompas5->TransferInterface(k5, KConst::ksAPI7Dual, 0) : nullptr;
+	}
+	
+	template <typename T>
+	static T ToApi5(IUnknown* k7) {
+		return kompas5 ? kompas5->TransferInterface(k7, KConst::ksAPI5Auto, 0) : nullptr;
+	}
 };
 
 #define DllExport extern "C" __declspec(dllexport)
@@ -309,5 +261,27 @@ void Kompas3D::ComDisconnect() {
 //	if (pKompas7) pKompas7->Release();
 //	if (comInit) CoUninitialize();
 }
+
+#define KOMPAS_PARAM(p) template K5::p##Ptr Kompas3DApi7::GetParamStruct(int);
+KOMPAS_PARAM(ksRectangleParam)
+KOMPAS_PARAM(ksRegularPolygonParam)
+KOMPAS_PARAM(ksEllipseParam)
+KOMPAS_PARAM(ksEllipseArcParam)
+KOMPAS_PARAM(ksEllipseArcParam1)
+KOMPAS_PARAM(ksUserParam)
+
+#define KOMPAS_API7(p) template K7::p##Ptr Kompas3DApi7::ToApi7(IUnknown*);
+KOMPAS_API7(IEmbodimentsManager)
+KOMPAS_API7(IThread)
+KOMPAS_API7(IAxis3D)
+KOMPAS_API7(ICutRotated)
+KOMPAS_API7(IKompasDocument3D1)
+KOMPAS_API7(IPart7)
+KOMPAS_API7(IModelObject)
+
+#define KOMPAS_API5(p) template K5::p##Ptr Kompas3DApi7::ToApi5(IUnknown*);
+KOMPAS_API5(ksPart)
+KOMPAS_API5(ksFaceDefinition)
+KOMPAS_API5(ksEdgeDefinition)
 
 #endif

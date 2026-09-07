@@ -1,5 +1,4 @@
-#ifndef _API7_DOC3D_HPP_
-#define _API7_DOC3D_HPP_
+#pragma once
 
 //#include "ComKompas.hpp"
 #include "../Include/Doc3D.h"
@@ -258,5 +257,3 @@ public:
 //	}
 //	return Part(nullptr, nullptr);
 //}
-
-#endif

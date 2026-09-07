@@ -35,31 +35,28 @@ enum class LineStyle : int {
 };
 
 class Sketch : public Node {
-private:
-	//IUnknown* eDef = nullptr;
-	//double lastX = 0.0;
-	//double lastY = 0.0;
-
 public:
 	class SketchImpl : virtual public Node::NodeImpl {
 	public:
 		virtual void SetPlane(const Plane& plane) = 0;
 		virtual void SetAngle(double angle) = 0;
 		virtual void SetLocation(double locX, double locY) = 0;
-//		void BeginEdit() = 0;
-//		void EndEdit() = 0;
-//		bool IsEdit() = 0;
-//		void Line(double x1, double y1, double x2, double y2, LineStyle style) = 0;
-//		void LineTo(double x, double y, LineStyle style) = 0;
-//		void Circle(double cx, double cy, double r, LineStyle style) = 0;
-//		void Rect(double x, double y, double h, double w, double angle, LineStyle style) = 0;
-//		void RegularPolygon(double cx, double cy, double r, int count, bool describe, double angle, LineStyle style) = 0;
-//		void Point(double x, double y, LineStyle style) = 0;
-//		void ArcByAngle(double cx, double cy, double r, double f1, double f2, bool cw, LineStyle style) = 0;
-//		void ArcByPoint(double cx, double cy, double r, double x1, double y1, double x2, double y2, bool cw, LineStyle style) = 0;
-//		void ArcBy3Points(double x1, double y1, double x2, double y2, double x3, double y3, LineStyle style) = 0;
-//		void Ellipse(double cx, double cy, double a, double b, double angle, LineStyle style) = 0;
-//		void EllipseArc(double cx, double cy, double a, double b, double a1, double a2, bool cw, double angle, LineStyle style) = 0;
+		virtual Plane::Point2D Projection(const Vertex::Point3D& point) = 0;
+		virtual void BeginEdit() = 0;
+		virtual void EndEdit() = 0;
+		virtual bool IsEdit() = 0;
+		virtual void Clear() = 0;
+		virtual void Line(double x1, double y1, double x2, double y2, LineStyle style) = 0;
+		virtual void LineTo(double x, double y, LineStyle style) = 0;
+		virtual void Circle(double cx, double cy, double r, LineStyle style) = 0;
+		virtual void Rect(double x, double y, double h, double w, double angle, LineStyle style) = 0;
+		virtual void RegularPolygon(double cx, double cy, double r, int count, bool describe, double angle, LineStyle style) = 0;
+		virtual void Point(double x, double y, LineStyle style) = 0;
+		virtual void ArcByAngle(double cx, double cy, double r, double f1, double f2, bool cw, LineStyle style) = 0;
+		virtual void ArcByPoint(double cx, double cy, double r, double x1, double y1, double x2, double y2, bool cw, LineStyle style) = 0;
+		virtual void ArcBy3Points(double x1, double y1, double x2, double y2, double x3, double y3, LineStyle style) = 0;
+		virtual void Ellipse(double cx, double cy, double a, double b, double angle, LineStyle style) = 0;
+		virtual void EllipseArc(double cx, double cy, double a, double b, double a1, double a2, bool cw, double angle, LineStyle style) = 0;
 	};
 	static inline int TYPE = 5; /* o3d_sketch */
 	Sketch(std::unique_ptr<NodeImpl> p) : Node(std::move(p)) {
@@ -82,28 +79,83 @@ public:
 		node->Create();
 	}
 	//Sketch(const Node& node) : Node(node.pEntity, node.pDefinition) {}
-	//Sketch(IUnknown* pEntity, IDispatch* pDefinition, const Plane& plane, double angle, double locX = 0.0, double locY = 0.0, const std::optional<std::string>& name = std::nullopt);
-	//Sketch(IUnknown* pEntity, IDispatch* pDefinition, const Plane& plane, const std::optional<std::string>& name = std::nullopt) : Sketch(pEntity, pDefinition, plane, 0.0, 0.0, 0.0, name) {}
-//	Plane::Point2D Projection(const Vertex::Point3D& point);
-//	Sketch& BeginEdit();
-//	void EndEdit();
-//	bool IsEdit() { return eDef; }
-//	Sketch& Clear();
-//	Sketch& Line(double x1, double y1, double x2, double y2, LineStyle style = LineStyle::Main);
-//	Sketch& LineTo(double x, double y, LineStyle style = LineStyle::Main);
-//	Sketch& Circle(double cx, double cy, double r, LineStyle style = LineStyle::Main);
-//	Sketch& Rect(double x, double y, double h, double w, double angle = 0.0, LineStyle style = LineStyle::Main);
-//	Sketch& RegularPolygon(double cx, double cy, double r, int count, bool describe = true, double angle = 0.0, LineStyle style = LineStyle::Main);
-//	Sketch& Point(double x, double y, LineStyle style = LineStyle::Main);
-//	Sketch& ArcByAngle(double cx, double cy, double r, double f1, double f2, bool cw, LineStyle style = LineStyle::Main);
-//	Sketch& ArcByPoint(double cx, double cy, double r, double x1, double y1, double x2, double y2, bool cw, LineStyle style = LineStyle::Main);
-//	Sketch& ArcBy3Points(double x1, double y1, double x2, double y2, double x3, double y3, LineStyle style = LineStyle::Main);
-//	Sketch& Ellipse(double cx, double cy, double a, double b, double angle = 0.0, LineStyle style = LineStyle::Main);
-//	Sketch& EllipseArc(double cx, double cy, double a, double b, double a1, double a2, bool cw, double angle = 0.0, LineStyle style = LineStyle::Main) {
-//		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
-//		if (sketch) sketch->EllipseArc(cx, cy, a, b, a1, a2, cv, angle, style);
-//		return *this;
-//	}
+	Plane::Point2D Projection(const Vertex::Point3D& point) {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		return sketch ? sketch->Projection(point) : Plane::Point2D{0., 0.};
+	}
+	Sketch& BeginEdit() {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		if (sketch) sketch->BeginEdit();
+		return *this;
+	}
+	void EndEdit() {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		if (sketch) sketch->EndEdit();
+	}
+	bool IsEdit() {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		return sketch ? sketch->IsEdit() : false;
+	}
+	Sketch& Clear() {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		if (sketch) sketch->Clear();
+		return *this;
+	}
+	Sketch& Line(double x1, double y1, double x2, double y2, LineStyle style = LineStyle::Main) {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		if (sketch) sketch->Line(x1, y1, x2, y2, style);
+		return *this;
+	}
+	Sketch& LineTo(double x, double y, LineStyle style = LineStyle::Main) {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		if (sketch) sketch->LineTo(x, y, style);
+		return *this;
+	}
+	Sketch& Circle(double cx, double cy, double r, LineStyle style = LineStyle::Main) {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		if (sketch) sketch->Circle(cx, cy, r, style);
+		return *this;
+	}
+	Sketch& Rect(double x, double y, double h, double w, double angle = 0.0, LineStyle style = LineStyle::Main) {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		if (sketch) sketch->Rect(x, y, h, w, angle, style);
+		return *this;
+	}
+	Sketch& RegularPolygon(double cx, double cy, double r, int count, bool describe = true, double angle = 0.0, LineStyle style = LineStyle::Main) {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		if (sketch) sketch->RegularPolygon(cx, cy, r, count, describe, angle, style);
+		return *this;
+	}
+	Sketch& Point(double x, double y, LineStyle style = LineStyle::Main) {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		if (sketch) sketch->Point(x, y, style);
+		return *this;
+	}
+	Sketch& ArcByAngle(double cx, double cy, double r, double f1, double f2, bool cw, LineStyle style = LineStyle::Main) {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		if (sketch) sketch->ArcByAngle(cx, cy, r, f1, f2, cw, style);
+		return *this;
+	}
+	Sketch& ArcByPoint(double cx, double cy, double r, double x1, double y1, double x2, double y2, bool cw, LineStyle style = LineStyle::Main) {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		if (sketch) sketch->ArcByPoint(cx, cy, r, x1, y1, x2, y2, cw, style);
+		return *this;
+	}
+	Sketch& ArcBy3Points(double x1, double y1, double x2, double y2, double x3, double y3, LineStyle style = LineStyle::Main) {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		if (sketch) sketch->ArcBy3Points(x1, y1, x2, y2, x3, y3, style);
+		return *this;
+	}
+	Sketch& Ellipse(double cx, double cy, double a, double b, double angle = 0.0, LineStyle style = LineStyle::Main) {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		if (sketch) sketch->Ellipse(cx, cy, a, b, angle, style);
+		return *this;
+	}
+	Sketch& EllipseArc(double cx, double cy, double a, double b, double a1, double a2, bool cw, double angle = 0.0, LineStyle style = LineStyle::Main) {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		if (sketch) sketch->EllipseArc(cx, cy, a, b, a1, a2, cw, angle, style);
+		return *this;
+	}
 
 	//ksLine
 	//ksColouring

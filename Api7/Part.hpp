@@ -1,9 +1,14 @@
+#pragma once
+
 #include "../Include/Part.h"
 #include "../Include/Kompas3D.h"
 #include "Node.hpp"
 #include "Node/Plane.hpp"
 #include "Node/Sketch.hpp"
 #include "Node/NodeMacro.hpp"
+#include "Node/CutExtrusion.hpp"
+#include "Node/BaseExtrusion.hpp"
+#include "Node/MeshCopy.hpp"
 
 class PartApi7 : public Part::PartImpl {
 private:
@@ -22,8 +27,18 @@ public:
 		if (!entity) return nullptr;
 		switch (type) {
 			case 5:  return std::make_unique<SketchApi7>(entity, nullptr);
+			//case 8:  return std::make_unique<VertexApi7>(entity, nullptr);
+			//case 6:  return std::make_unique<FaceApi7>(entity, nullptr);
+			case 26:  return std::make_unique<CutExtrusionApi7>(entity, nullptr);
+			//case :  return std::make_unique<CutEvolutionApi7>(entity, nullptr);
+			//case 29:  return std::make_unique<CutRotatedApi7>(entity, nullptr);
+			case 24:  return std::make_unique<BaseExtrusionApi7>(entity, nullptr);
+			case 35:  return std::make_unique<MeshCopyApi7>(entity, nullptr);
+			//case :  return std::make_unique<CircularCopyApi7>(entity, nullptr);
 			case 63: return std::make_unique<NodeMacroApi7>(entity, nullptr);
-			default: return std::make_unique<NodeApi7>(entity, nullptr);
+			default:
+				throw Kompas3DException("Создание неизвестного объекта " + std::to_string(type));
+				//return std::make_unique<NodeApi7>(entity, nullptr);
 		}
 	}
 

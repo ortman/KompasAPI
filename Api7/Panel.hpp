@@ -1,3 +1,5 @@
+#pragma once
+
 /*
  * #include "Panel.h"
  * #include "Node.h"
