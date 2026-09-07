@@ -19,6 +19,33 @@
 #define SETTINGS_RIDGE_MIN  0.01
 #define SETTINGS_RIDGE_MAX  100.0
 
+enum MateType : int {
+	MateCoincidence   = 0,  // совпадение объектов
+	MateParallel      = 1,  // параллельность
+	MatePerpendicular = 2,  // перпендикулярность
+	MateTangency      = 3,  // касательность
+	MateConcentric    = 4,  // концентричность
+	MateDistance      = 5,  // постоянное расстояние между объектами
+	MateAngle         = 6,  // постоянный угол между объектами
+	MateInPlace       = 7,  // создание компонента "на месте"
+	MateTransmission  = 9,  // Механическая передача
+	MateCamGear       = 10, // Кулачковый механизм. Кулачек-толкатель
+	MateSymmetric     = 11, // Симметрия
+	MateDependent     = 14  // Зависимое положение
+};
+
+enum MateDir : int {
+	MateDirUndefined  = 0,  // направление не учитывается
+	MateDirSame       = 1,  // объекты однонаправленные
+	MateDirOpposite   = -1  // объекты разнонаправленные
+};
+
+enum MateFixed : int {
+	MateFixedNone     = 0,  // детали не фиксируются
+	MateFixedFirst    = 1,  // фиксируется первая деталь
+	MateFixedSecond   = 2   // фиксируется вторая деталь
+};
+
 class DocumentFileNotifyLoc;
 class Doc3D {
 public:
@@ -126,6 +153,16 @@ public:
 		virtual std::string GetPath() { return std::string(); }
 		virtual bool SaveAs(const ExportParams& params, const std::string& path) { return false; }
 		virtual Part GetTopPart() { return Part(); }
+		virtual std::unique_ptr<Node::NodeImpl> GetEditMacroObject() { return nullptr; }
+		virtual bool Reopen() { return false; }
+		virtual void Close() {}
+		virtual int GetEmbodimentsCount() { return 0; }
+		virtual std::string GetEmbodimentName(int i) { return std::string(); }
+		virtual Part GetEmbodiment(int i) { return Part(); }
+		virtual bool SetCurrentEmbodiment(int i) { return false; }
+		virtual bool AddMateConstraint(MateType type, const Node& object1, const Node& object2,
+		                               MateDir direction, MateFixed fixed, double value) { return false; }
+		virtual Part AddPart(const Part& part, const std::optional<std::string>& filePath) { return Part(); }
 		virtual ~Doc3DImpl() = default;
 	};
 
@@ -137,25 +174,26 @@ public:
 	KompasEvent<void()> WhenActiveDocument;
 	
 	Doc3D() : doc(nullptr) {} // No document
+	Doc3D(std::nullptr_t) : doc(nullptr) {} // No document
 	Doc3D(std::unique_ptr<Doc3DImpl> p) : doc(std::move(p)) {}
-//	Doc3D(const Doc3D& other) = delete; // Конструктор копирования
-//  Doc3D& operator=(const Doc3D& other) = delete; // Оператор копирующего присваивания
-//	Doc3D(Doc3D&& doc) noexcept; // Конструктор перемещения
-//	Doc3D& operator=(Doc3D&& doc) noexcept; // Оператор перемещающего присваивания
-//	~Doc3D();
 	std::string GetPath() { return doc->GetPath(); }
 	Part GetTopPart() { return doc->GetTopPart(); }
-//	NodeMacro GetEditMacroObject();
+	NodeMacro GetEditMacroObject() { return NodeMacro(doc->GetEditMacroObject()); }
 	bool SaveAs(const ExportParams& params, const std::string& path) { return doc->SaveAs(params, path); }
-//	Doc3D& Reopen();
-//	void Close();
-//	int GetEmbodimentsCount();
-//	std::string GetEmbodimentName(int i);
-//	Part GetEmbodiment(int i);
-//	bool SetCurrentEmbodiment(int i);
+	Doc3D& Reopen() { doc->Reopen(); return *this; }
+	void Close() { doc->Close(); }
+	int GetEmbodimentsCount() { return doc->GetEmbodimentsCount(); }
+	std::string GetEmbodimentName(int i) { return doc->GetEmbodimentName(i); }
+	Part GetEmbodiment(int i) { return doc->GetEmbodiment(i); }
+	bool SetCurrentEmbodiment(int i) { return doc->SetCurrentEmbodiment(i); }
 	operator bool() const { return (bool)doc; }
-//	bool AddMateConstraint(MateType type, const Node& object1, const Node& object2, MateDir direction, MateFixed fixed, double value = 0.0);
-//	Part AddPart(const Part& part, const std::optional<std::string>& filePath = std::nullopt);
+	bool AddMateConstraint(MateType type, const Node& object1, const Node& object2,
+	                       MateDir direction, MateFixed fixed = MateFixedNone, double value = 0.0) {
+		return doc->AddMateConstraint(type, object1, object2, direction, fixed, value);
+	}
+	Part AddPart(const Part& part, const std::optional<std::string>& filePath = std::nullopt) {
+		return doc->AddPart(part, filePath);
+	}
 //	template <typename T>
 //	T& CreatePorcess() {
 //		if (proc3D) delete proc3D;

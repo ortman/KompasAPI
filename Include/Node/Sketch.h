@@ -59,6 +59,7 @@ public:
 		virtual void EllipseArc(double cx, double cy, double a, double b, double a1, double a2, bool cw, double angle, LineStyle style) = 0;
 	};
 	static inline int TYPE = 5; /* o3d_sketch */
+	Sketch() : Node(nullptr) {}
 	Sketch(std::unique_ptr<NodeImpl> p) : Node(std::move(p)) {
 		node->Create();
 	}
@@ -78,7 +79,7 @@ public:
 		}
 		node->Create();
 	}
-	//Sketch(const Node& node) : Node(node.pEntity, node.pDefinition) {}
+	//Sketch(const Node& node) : Node(std::move(node.node)) {}
 	Plane::Point2D Projection(const Vertex::Point3D& point) {
 		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
 		return sketch ? sketch->Projection(point) : Plane::Point2D{0., 0.};

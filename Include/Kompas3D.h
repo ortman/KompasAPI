@@ -5,12 +5,12 @@
 #include "Node/Sketch.h"
 #include "Node/BaseExtrusion.h"
 #include "Node/CutExtrusion.h"
-//#include "Node/CutEvolution.h"
-//#include "Node/CutRotated.h"
+#include "Node/CutEvolution.h"
+#include "Node/CutRotated.h"
 #include "Node/MeshCopy.h"
-//#include "Node/CircularCopy.h"
-//#include "Node/ThreadDesignation.h"
-//#include "Node/CylindricSpiral.h"
+#include "Node/CircularCopy.h"
+#include "Node/ThreadDesignation.h"
+#include "Node/CylindricSpiral.h"
 
 #include "Panel.h"
 
@@ -22,6 +22,7 @@ public:
 		virtual void Message(const std::string& txt) {}
 		virtual void Error(const std::string& txt) {}
 		virtual std::string SystemPath(long type) { return std::string(); }
+		virtual std::unique_ptr<Panel::PanelImpl> CreatePanel() { return nullptr; }
 		virtual ~Kompas3DImpl() = default;
 	};
 
@@ -34,6 +35,7 @@ public:
 	static void Message(const std::string& txt) { kompas->Message(txt); }
 	static void Error(const std::string& txt) { kompas->Error(txt); }
 	static std::string SystemPath(long type) { return kompas->SystemPath(type); }
+	static std::unique_ptr<Panel::PanelImpl> CreatePanel() { return kompas->CreatePanel(); }
 	static std::string ConfigPath() { return SystemPath(3 /*ksConfigurations*/); }
 	static void RunCommand(uint32_t comm);
 	static std::string Cp1251ToUtf8(const char* cp1251Str);
@@ -50,5 +52,8 @@ private:
 //	static IUnknown* CreatePropertyManager();
 //	static IUnknown* CreateProcessParam();
 };
+
+// Определено здесь: панели нужна фабрика реализации из Kompas3D
+inline bool Panel::Create() { return Build(Kompas3D::CreatePanel()); }
 
 #endif

@@ -1,279 +1,177 @@
 #pragma once
 
-/*
- * #include "Panel.h"
- * #include "Node.h"
- * #include "Kompas3D.h"
- * 
- * _variant_t ToVariantT(const PropertyVariant& boxVar) {
- * 	return std::visit([](const auto& arg) -> _variant_t {
- * 		using T = std::decay_t<decltype(arg)>;
- * 		if constexpr (std::is_same_v<T, std::string>) {
- * 			return _variant_t(Node::Utf8ToCp1251(arg).c_str()); // Создаст VARIANT с типом VT_BSTR
- * 		} else {
- * 			return _variant_t(arg); // Для int (VT_I4), double (VT_R8) и т.д.
- * 		}
- * 	}, boxVar);
- * }
- * 
- * PropertyVariant FromVariantT(const _variant_t& var) {
- * 	switch (var.vt) {
- * 		case VT_I4:   return int(var);
- * 		case VT_R8:   return double(var);
- * 		case VT_BSTR: return Node::Cp1251ToUtf8(_bstr_t(var.bstrVal));
- * 		case VT_I2:   return static_cast<int>(var);
- * 		case VT_R4:   return static_cast<double>(var);
- * 		default: throw Kompas3DException("Unsupported _variant_t type");
- * 	}
- * }
- * 
- * class PropertyManagerNotifyLoc : public ComEvent {
- * private:
- * 	Panel* panel;
- * public:
- * 	PropertyManagerNotifyLoc(Panel* p) : ComEvent(K7::DIID_ksPropertyManagerNotify), panel(p) {}
- * 	
- * 	STDMETHODIMP Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags,
- * 	                    DISPPARAMS* pDispParams, VARIANT* pVarResult,
- * 	                    EXCEPINFO* pExcepInfo, UINT* puArgErr) override {
- * 		switch((int)dispIdMember) {
- * 			case KConst::prButtonClick: {
- * 				VARIANT& buttonId = pDispParams->rgvarg[pDispParams->cArgs - 1];
- * 				if (panel && buttonId.vt == VT_I4) {
- * 					VariantInit(pVarResult);
- * 					pVarResult->vt = VT_BOOL;
- * 					pVarResult->boolVal = panel->WhenButtonClick(buttonId.lVal);
- * 				}
- * 				break;
- * 			}
- * 			case KConst::prControlCommand: {
- * 				VARIANT& buttonId = pDispParams->rgvarg[pDispParams->cArgs - 2];
- * 				if (panel && buttonId.vt == VT_I4) {
- * 					for (Panel::Tab* t : panel->tabs) {
- * 						for (Panel::Property* p : t->props) {
- * 							if (p->GetId() == buttonId.lVal) {
- * 								PropertyButton* b = dynamic_cast<PropertyButton*>(p);
- * 								if (b) b->WhenClick();
- * 								t = NULL;
- * 								break;
- * 							}
- * 						}
- * 						if (!t) break;
- * 					}
- * 				}
- * 				break;
- * 			}
- * 			case KConst::prChangeControlValue: {
- * 				VARIANT& ctrl = pDispParams->rgvarg[pDispParams->cArgs - 1];
- * 				if (panel && ctrl.vt == VT_DISPATCH) {
- * 					K7::IPropertyControlPtr pCtrl = ctrl.pdispVal;
- * 					if (pCtrl) {
- * 						for (Panel::Tab* t : panel->tabs) {
- * 							for (Panel::Property* p : t->props) {
- * 								if (pCtrl->Id == p->GetId()) {
- * 									p->WhenChange();
- * 									t = NULL;
- * 									break;
- * 								}
- * 							}
- * 							if (!t) break;
- * 						}
- * 					}
- * 				}
- * 				break;
- * 			}
- * 		}
- * 		return S_OK;
- * 	}
- * };
- * 
- * Panel::~Panel() {
- * 	RemovePropertyManagerNotify(pManager);
- * 	if (pManager) pManager->Release();
- * 	currentPanel = nullptr;
- * }
- * 
- * void Panel::CreatePropertyManagerNotify(IUnknown* p) {
- * 	comEvent = new PropertyManagerNotifyLoc(this);
- * 	comEvent->Subscribe(p);
- * }
- * 
- * void Panel::RemovePropertyManagerNotify(IUnknown* p) {
- * 	if (comEvent && p) {
- * 		comEvent->Unsubscribe(p);
- * 		delete comEvent;
- * 	}
- * }
- * 
- * bool Panel::Create() {
- * 	currentPanel = nullptr;
- * 	try {
- * 		pManager = Kompas3D::CreatePropertyManager();
- * 		K7::IPropertyManagerPtr manager(pManager);
- * 		if (!name.empty()) manager->Caption = Node::Utf8ToCp1251(name).c_str();
- * 		manager->SpecToolbar = KConst::pnEnterEscHelp;
- * 		CreatePropertyManagerNotify(pManager);
- * 		K7::IPropertyTabsPtr pTabs = manager->PropertyTabs;
- * 		if (!pTabs) throw Kompas3DException("Can not get PropertyTabs of PropertyManager");
- * 		for (Tab* t : tabs) {
- * 			K7::IPropertyTabPtr pTab = pTabs->Add(Node::Utf8ToCp1251(t->name).c_str());
- * 			if (pTab) {
- * 				pTab.AddRef();
- * 				t->pTab = pTab.GetInterfacePtr();
- * 				for (Property* p : t->props) {
- * 					t->Create(p);
- * 				}
- * 			}
- * 		}
- * 	} catch (const Kompas3DException&) {
- * 		return false;
- * 	}
- * 	return true;
- * }
- * 
- * void Panel::Update() {
- * 	K7::IPropertyManagerPtr manager(pManager);
- * 	//manager->UpdateTabs(); // not working
- * 	manager->HideTabs();
- * 	manager->ShowTabs();
- * }
- * 
- * void Panel::Show(bool isShow) {
- * 	K7::IPropertyManagerPtr manager(pManager);
- * 	if (!manager) throw Kompas3DException("Can not get PropertyManager");
- * 	if (isShow) {
- * 		manager->ShowTabs();
- * 	} else {
- * 		manager->HideTabs();
- * 	}
- * }
- * 
- * // Tab
- * Panel::Tab::~Tab() {
- * 	for (Property* p : createdProps) delete p;
- * 	if (pTab) pTab->Release();
- * 	currentTab = nullptr;
- * }
- * 
- * Panel::Tab& Panel::Tab::Clear() {
- * 	K7::IPropertyTabPtr tab = pTab;
- * 	K7::IPropertyControlsPtr ctrls = tab->PropertyControls;
- * 	int cnt = (int)props.size();
- * 	for (int i = cnt - 1; i >= 0; --i) {
- * 		ctrls->Delete(i);
- * 	}
- * 	props.clear();
- * 	for (Property* p : createdProps) delete p;
- * 	createdProps.clear();
- * 	return *this;
- * }
- * 
- * void Panel::Tab::Create(Panel::Property* property) {
- * 	K7::IPropertyTabPtr tab(pTab);
- * 	K7::IPropertyControlsPtr ctrls = tab->PropertyControls;
- * 	if (!ctrls) throw Kompas3DException("Can not get PropertyControls of Tab");
- * 	K7::IPropertyControlPtr c = ctrls->Add((KConst::ControlTypeEnum)property->type);
- * 	if (c) property->Create(c.GetInterfacePtr());
- * }
- * 
- * //void Panel::Tab::Remove(Panel::Property& prop) {
- * //	K7::IPropertyTabPtr tab(pTab);
- * //	K7::IPropertyControlsPtr ctrls = tab->PropertyControls;
- * //	int cnt = (int)props.size();
- * //	for (int i = 0; i < cnt; ++i) {
- * //		if (props[i] == &prop) {
- * //			prop.tab = NULL;
- * //			props.erase(props.begin() + i);
- * //			if (prop.pProp) {
- * //				ctrls->Delete(i);
- * //				prop.pProp->Release();
- * //				prop.pProp = NULL;
- * //			}
- * //			break;
- * //		}
- * //	}
- * //}
- * 
- * // Property
- * Panel::Property::~Property() {
- * 	if (pProp) pProp->Release();
- * }
- * 
- * void Panel::Property::Create(IUnknown* pControls) {
- * 	pProp = pControls;
- * 	pProp->AddRef();
- * 	K7::IPropertyControlPtr c = pProp;
- * 	c->Name = Node::Utf8ToCp1251(name).c_str();
- * 	c->Value = ToVariantT(defaultVal);
- * 	c->Id = ++nextId;
- * }
- * 
- * int Panel::Property::GetId() {
- * 	if (!pProp) return 0;
- * 	K7::IPropertyControlPtr c = pProp;
- * 	return c->Id;
- * }
- * 
- * void Panel::Property::SetName(const std::string& name) {
- * 	K7::IPropertyControlPtr c = pProp;
- * 	c->Name = Node::Utf8ToCp1251(name).c_str();
- * }
- * 
- * PropertyList& PropertyList::Add(PropertyVariant val) {
- * 	K7::IPropertyListPtr prop(pProp);
- * 	if (prop) prop->Add(ToVariantT(val));
- * 	return *this;
- * }
- * 
- * PropertyList::operator PropertyVariant() const {
- * 	K7::IPropertyListPtr prop(pProp);
- * 	return FromVariantT(prop->Value);
- * }
- * 
- * PropertyVariant PropertyList::operator=(PropertyVariant val) {
- * 	K7::IPropertyListPtr prop(pProp);
- * 	prop->Value = ToVariantT(val);
- * 	return val;
- * }
- * 
- * PropertyList& PropertyList::Clear() {
- * 	K7::IPropertyListPtr prop(pProp);
- * 	prop->ClearList();
- * 	return *this;
- * }
- * 
- * int PropertyList::Find(PropertyVariant val) {
- * 	K7::IPropertyListPtr prop(pProp);
- * 	return prop->Find(ToVariantT(val));
- * }
- * 
- * double PropertyD::operator=(double val) {
- * 	K7::IPropertyControlPtr prop(pProp);
- * 	prop->Value = val;
- * 	return val;
- * }
- * 
- * PropertyD::operator double() const {
- * 	K7::IPropertyControlPtr prop(pProp);
- * 	return prop->Value;
- * }
- * 
- * int PropertyI::operator=(int val) {
- * 	K7::IPropertyControlPtr prop(pProp);
- * 	prop->Value = val;
- * 	return val;
- * }
- * 
- * PropertyI::operator int() const {
- * 	K7::IPropertyControlPtr prop(pProp);
- * 	return prop->Value;
- * }
- * 
- * void PropertyButton::Create(IUnknown* pControls) {
- * 	pProp = pControls;
- * 	pProp->AddRef();
- * 	K7::IPropertyControlPtr c = pProp;
- * 	c->Name = Node::Utf8ToCp1251(name).c_str();
- * 	c->Id = ++nextId;
- * }
- */
+#include "../Include/Panel.h"
+#include "../Include/Kompas3D.h"
+
+inline _variant_t ToVariantT(const PropertyVariant& boxVar) {
+	return std::visit([](const auto& arg) -> _variant_t {
+		using T = std::decay_t<decltype(arg)>;
+		if constexpr (std::is_same_v<T, std::string>) {
+			return _variant_t(Kompas3D::Utf8ToCp1251(arg).c_str()); // Создаст VARIANT с типом VT_BSTR
+		} else {
+			return _variant_t(arg); // Для int (VT_I4), double (VT_R8) и т.д.
+		}
+	}, boxVar);
+}
+
+inline PropertyVariant FromVariantT(const _variant_t& var) {
+	switch (var.vt) {
+		case VT_I4:   return int(var);
+		case VT_R8:   return double(var);
+		case VT_BSTR: return Kompas3D::Cp1251ToUtf8(_bstr_t(var.bstrVal));
+		case VT_I2:   return static_cast<int>(var);
+		case VT_R4:   return static_cast<double>(var);
+		case VT_EMPTY:
+		case VT_NULL: return 0;
+		default: throw Kompas3DException("Unsupported _variant_t type");
+	}
+}
+
+class PropertyApi7 : public Panel::PropertyImpl {
+private:
+	K7::IPropertyControlPtr ctrl;
+
+public:
+	PropertyApi7(K7::IPropertyControlPtr c) : ctrl(c) {}
+
+	void Create(const std::string& name, const std::optional<PropertyVariant>& val, int id) override {
+		ctrl->Name = Kompas3D::Utf8ToCp1251(name).c_str();
+		if (val.has_value()) ctrl->Value = ToVariantT(val.value());
+		ctrl->Id = id;
+	}
+	void SetName(const std::string& name) override {
+		ctrl->Name = Kompas3D::Utf8ToCp1251(name).c_str();
+	}
+	PropertyVariant GetValue() override {
+		return FromVariantT(ctrl->Value);
+	}
+	void SetValue(const PropertyVariant& val) override {
+		ctrl->Value = ToVariantT(val);
+	}
+	void Add(const PropertyVariant& val) override {
+		K7::IPropertyListPtr list = ctrl;
+		if (list) list->Add(ToVariantT(val));
+	}
+	void ClearList() override {
+		K7::IPropertyListPtr list = ctrl;
+		if (list) list->ClearList();
+	}
+	int Find(const PropertyVariant& val) override {
+		K7::IPropertyListPtr list = ctrl;
+		return list ? list->Find(ToVariantT(val)) : -1;
+	}
+};
+
+class TabApi7 : public Panel::TabImpl {
+private:
+	K7::IPropertyTabPtr tab;
+
+	K7::IPropertyControlsPtr Controls() {
+		K7::IPropertyControlsPtr ctrls = tab ? tab->PropertyControls : nullptr;
+		if (!ctrls) throw Kompas3DException("Can not get PropertyControls of Tab");
+		return ctrls;
+	}
+
+public:
+	TabApi7(K7::IPropertyTabPtr t) : tab(t) {}
+
+	std::unique_ptr<Panel::PropertyImpl> AddProperty(int type) override {
+		K7::IPropertyControlPtr c = Controls()->Add((KConst::ControlTypeEnum)type);
+		if (!c) return nullptr;
+		return std::make_unique<PropertyApi7>(c);
+	}
+	void Clear(int count) override {
+		K7::IPropertyControlsPtr ctrls = Controls();
+		for (int i = count - 1; i >= 0; --i) ctrls->Delete(i);
+	}
+};
+
+class PropertyManagerNotifyLoc : public ComEvent {
+private:
+	Panel* panel;
+
+public:
+	PropertyManagerNotifyLoc(Panel* p) : ComEvent(K7::DIID_ksPropertyManagerNotify), panel(p) {}
+
+	STDMETHODIMP Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags,
+	                    DISPPARAMS* pDispParams, VARIANT* pVarResult,
+	                    EXCEPINFO* pExcepInfo, UINT* puArgErr) override {
+		switch((int)dispIdMember) {
+			case KConst::prButtonClick: {
+				VARIANT& buttonId = pDispParams->rgvarg[pDispParams->cArgs - 1];
+				if (panel && buttonId.vt == VT_I4) {
+					VariantInit(pVarResult);
+					pVarResult->vt = VT_BOOL;
+					pVarResult->boolVal = panel->OnButtonClick(buttonId.lVal);
+				}
+				break;
+			}
+			case KConst::prControlCommand: {
+				VARIANT& buttonId = pDispParams->rgvarg[pDispParams->cArgs - 2];
+				if (panel && buttonId.vt == VT_I4) {
+					panel->OnControlCommand(buttonId.lVal);
+				}
+				break;
+			}
+			case KConst::prChangeControlValue: {
+				VARIANT& ctrl = pDispParams->rgvarg[pDispParams->cArgs - 1];
+				if (panel && ctrl.vt == VT_DISPATCH) {
+					K7::IPropertyControlPtr pCtrl = ctrl.pdispVal;
+					if (pCtrl) panel->OnChangeControlValue(pCtrl->Id);
+				}
+				break;
+			}
+		}
+		return S_OK;
+	}
+};
+
+class PanelApi7 : public Panel::PanelImpl {
+private:
+	K7::IPropertyManagerPtr manager;
+	PropertyManagerNotifyLoc* comEvent = nullptr;
+
+public:
+	~PanelApi7() override {
+		if (comEvent) {
+			if (manager) comEvent->Unsubscribe(manager);
+			delete comEvent;
+			comEvent = nullptr;
+		}
+	}
+
+	bool Create(Panel* owner, const std::string& caption) override {
+		if (!ComEvent::kompas7) return false;
+		manager = ComEvent::kompas7->CreatePropertyManager(true);
+		if (!manager) throw Kompas3DException("Can not create PropertyManager");
+		if (!caption.empty()) manager->Caption = Kompas3D::Utf8ToCp1251(caption).c_str();
+		manager->SpecToolbar = KConst::pnEnterEscHelp;
+		comEvent = new PropertyManagerNotifyLoc(owner);
+		comEvent->Subscribe(manager);
+		return true;
+	}
+
+	std::unique_ptr<Panel::TabImpl> AddTab(const std::string& name) override {
+		K7::IPropertyTabsPtr tabs = manager ? manager->PropertyTabs : nullptr;
+		if (!tabs) throw Kompas3DException("Can not get PropertyTabs of PropertyManager");
+		K7::IPropertyTabPtr tab = tabs->Add(Kompas3D::Utf8ToCp1251(name).c_str());
+		if (!tab) return nullptr;
+		return std::make_unique<TabApi7>(tab);
+	}
+
+	void Update() override {
+		if (!manager) throw Kompas3DException("Can not get PropertyManager");
+		//manager->UpdateTabs(); // not working
+		manager->HideTabs();
+		manager->ShowTabs();
+	}
+
+	void Show(bool isShow) override {
+		if (!manager) throw Kompas3DException("Can not get PropertyManager");
+		if (isShow) {
+			manager->ShowTabs();
+		} else {
+			manager->HideTabs();
+		}
+	}
+};

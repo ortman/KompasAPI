@@ -3,19 +3,27 @@
 #include "../Include/Part.h"
 #include "../Include/Kompas3D.h"
 #include "Node.hpp"
+#include "Node/Vertex.hpp"
+#include "Node/Face.hpp"
+#include "Node/Edge.hpp"
+#include "Node/Axis.hpp"
 #include "Node/Plane.hpp"
 #include "Node/Sketch.hpp"
 #include "Node/NodeMacro.hpp"
 #include "Node/CutExtrusion.hpp"
+#include "Node/CutRotated.hpp"
+#include "Node/CutEvolution.hpp"
 #include "Node/BaseExtrusion.hpp"
 #include "Node/MeshCopy.hpp"
+#include "Node/CircularCopy.hpp"
+#include "Node/CylindricSpiral.hpp"
+#include "Node/ThreadDesignation.hpp"
 
 class PartApi7 : public Part::PartImpl {
-private:
+public:
 	K5::ksDocument3DPtr doc;
 	K5::ksPartPtr part;
 	
-public:
 	PartApi7(K5::ksDocument3DPtr d, K5::ksPartPtr p) : doc(d), part(p) {}
 	
 	std::string Name() {
@@ -27,14 +35,20 @@ public:
 		if (!entity) return nullptr;
 		switch (type) {
 			case 5:  return std::make_unique<SketchApi7>(entity, nullptr);
-			//case 8:  return std::make_unique<VertexApi7>(entity, nullptr);
-			//case 6:  return std::make_unique<FaceApi7>(entity, nullptr);
-			case 26:  return std::make_unique<CutExtrusionApi7>(entity, nullptr);
-			//case :  return std::make_unique<CutEvolutionApi7>(entity, nullptr);
-			//case 29:  return std::make_unique<CutRotatedApi7>(entity, nullptr);
-			case 24:  return std::make_unique<BaseExtrusionApi7>(entity, nullptr);
-			case 35:  return std::make_unique<MeshCopyApi7>(entity, nullptr);
-			//case :  return std::make_unique<CircularCopyApi7>(entity, nullptr);
+			case 6:  return std::make_unique<FaceApi7>(entity, nullptr);
+			case 7:  return std::make_unique<EdgeApi7>(entity, nullptr);
+			case 8:  return std::make_unique<VertexApi7>(entity, nullptr);
+			case 11: return std::make_unique<ConeAxisApi7>(entity, nullptr);
+			case 19: return std::make_unique<EdgePointPlaneApi7>(entity, nullptr);
+			case 20: return std::make_unique<ParallelPlaneApi7>(entity, nullptr);
+			case 24: return std::make_unique<BaseExtrusionApi7>(entity, nullptr);
+			case 26: return std::make_unique<CutExtrusionApi7>(entity, nullptr);
+			case 29: return std::make_unique<CutRotatedApi7>(entity, nullptr);
+			case 35: return std::make_unique<MeshCopyApi7>(entity, nullptr);
+			case 36: return std::make_unique<CircularCopyApi7>(entity, nullptr);
+			case 47: return std::make_unique<CutEvolutionApi7>(entity, nullptr);
+			case 56: return std::make_unique<CylindricSpiralApi7>(entity, nullptr);
+			case 58: return std::make_unique<ThreadDesignationApi7>(entity, nullptr);
 			case 63: return std::make_unique<NodeMacroApi7>(entity, nullptr);
 			default:
 				throw Kompas3DException("Создание неизвестного объекта " + std::to_string(type));

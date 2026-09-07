@@ -180,6 +180,11 @@ public:
 	std::string SystemPath(long type) override {
 		return ComEvent::kompas5 ? Kompas3D::Cp1251ToUtf8(ComEvent::kompas5->ksSystemPath(type)) : std::string();
 	}
+	
+	std::unique_ptr<Panel::PanelImpl> CreatePanel() override {
+		if (!ComEvent::kompas7) return nullptr;
+		return std::make_unique<PanelApi7>();
+	}
 };
 
 #define DllExport extern "C" __declspec(dllexport)

@@ -1,41 +1,29 @@
 #pragma once
 
-/*
- * #include "CutEvolution.h"
- * 
- * CutEvolution::CutEvolution(IUnknown* pE, IDispatch* pD, Sketch& sketch, const Node node, const std::optional<std::string>& name) : Node(pE, pD) {
- * 	sketch.EndEdit();
- * 	K5::ksEntityPtr entity = pEntity;
- * 	if (name.has_value()) entity->name = Utf8ToCp1251(name.value()).c_str();
- * 	K5::ksCutEvolutionDefinitionPtr def = pDefinition;
- * 	if (!def) throw Kompas3DException("Не могу получить CutEvolutionDefinition, entityType=" + std::to_string(entity->type));
- * 	K5::ksEntityPtr sketchEntity = sketch.pEntity;
- * 	if (!sketchEntity) throw Kompas3DException("Не могу получить Эскиз");
- * 	def->SetSketch(sketchEntity);
- * 	K5::ksEntityCollectionPtr path = def->PathPartArray();
- * 	if (!def) throw Kompas3DException("Не могу получить PathPartArray в CutEvolution");
- * 	K5::ksEntityPtr nodeEntity = node.pEntity;
- * 	if (nodeEntity) path->Add(nodeEntity);
- * 	entity->Create();
- * }
- * 
- * CutEvolution::CutEvolution(IUnknown* pE, IDispatch* pD, Sketch& sketch, const std::vector<Node>& nodes, const std::optional<std::string>& name) : Node(pE, pD) {
- * 	sketch.EndEdit();
- * 	K5::ksEntityPtr entity = pEntity;
- * 	if (name.has_value()) entity->name = Utf8ToCp1251(name.value()).c_str();
- * 	K5::ksCutEvolutionDefinitionPtr def = pDefinition;
- * 	if (!def) throw Kompas3DException("Не могу получить CutEvolutionDefinition, entityType=" + std::to_string(entity->type));
- * 	K5::ksEntityPtr sketchEntity = sketch.pEntity;
- * 	if (!sketchEntity) throw Kompas3DException("Не могу получить Эскиз");
- * 	def->SetSketch(sketchEntity);
- * 	K5::ksEntityCollectionPtr path = def->PathPartArray();
- * 	if (!def) throw Kompas3DException("Не могу получить PathPartArray в CutEvolution");
- * 	for (const Node& node : nodes) {
- * 		K5::ksEntityPtr nodeEntity = node.pEntity;
- * 		if (nodeEntity) path->Add(nodeEntity);
- * 	}
- * 	entity->Create();
- * }
- * 
- * int CutEvolution::TYPE = KConst3D::o3d_cutEvolution;
- */
+#include "../../Include/Node/CutEvolution.h"
+#include "../Node.hpp"
+#include "Sketch.hpp"
+
+class CutEvolutionApi7 : public NodeApi7, public CutEvolution::CutEvolutionImpl {
+public :
+	CutEvolutionApi7(K5::ksEntityPtr e, IDispatchPtr d) : NodeApi7(e, d) {}
+	void SetSketch(Sketch& sketch) override {
+		K5::ksCutEvolutionDefinitionPtr d = def;
+		NodeApi7* node = dynamic_cast<NodeApi7*>(sketch.node.get());
+		if (node) {
+			K5::ksEntityPtr sketchEntity = node->entity;
+			if (!sketchEntity) throw Kompas3DException("Не могу получить Эскиз");
+			d->SetSketch(sketchEntity);
+		}
+	}
+	void AddPath(const Node& n) override {
+		K5::ksCutEvolutionDefinitionPtr d = def;
+		K5::ksEntityCollectionPtr path = d->PathPartArray();
+		if (!path) throw Kompas3DException("Не могу получить PathPartArray в CutEvolution");
+		NodeApi7* n7 = dynamic_cast<NodeApi7*>(n.node.get());
+		if (n7) {
+			K5::ksEntityPtr nodeEntity = n7->entity;
+			if (nodeEntity) path->Add(nodeEntity);
+		}
+	}
+};

@@ -104,6 +104,97 @@ public:
 //	return Part(pDoc, top.GetInterfacePtr());
 		return Part();
 	}
+	
+	std::unique_ptr<Node::NodeImpl> GetEditMacroObject() override {
+		if (!doc || !doc->IsEditMode()) return nullptr;
+		K5::ksEntityPtr macro = doc->GetEditMacroObject();
+		if (!macro) return nullptr;
+		return std::make_unique<NodeMacroApi7>(macro, nullptr);
+	}
+	
+	bool Reopen() override {
+		if (!doc) return false;
+		std::string path = GetPath();
+		if (path.empty()) return false;
+		bool invisible = doc->invisibleMode;
+		doc->close();
+		doc = nullptr;
+		if (!ComEvent::kompas5) return false;
+		doc = ComEvent::kompas5->Document3D();
+		if (!doc) throw Kompas3DException("Не могу создать документ для повторного открытия: " + path);
+		return doc->Open(Kompas3D::Utf8ToCp1251(path).c_str(), invisible);
+	}
+	
+	void Close() override {
+		if (doc) {
+			doc->close();
+			doc = nullptr;
+		}
+	}
+	
+	int GetEmbodimentsCount() override {
+		K7::IEmbodimentsManagerPtr em = ToApi7<K7::IEmbodimentsManagerPtr>(doc);
+		return em ? em->EmbodimentCount : 0;
+	}
+	
+	std::string GetEmbodimentName(int i) override {
+		if (K7::IEmbodimentsManagerPtr em = ToApi7<K7::IEmbodimentsManagerPtr>(doc)) {
+			if (i < em->EmbodimentCount) {
+				if (K7::IEmbodimentPtr e = em->Embodiment[i]) {
+					std::string name = Kompas3D::Cp1251ToUtf8(e->GetMarking(KConst::ksVMEmbodimentNumber, false));
+					size_t eName = name.find_last_not_of(" \t\n\r");
+					if (eName != std::string::npos) name = name.substr(0, eName + 1);
+					size_t sName = name.find_first_not_of(" \t\n\r-");
+					if (sName != std::string::npos) return name.substr(sName);
+				}
+			}
+		}
+		return std::string();
+	}
+	
+	Part GetEmbodiment(int i) override {
+		if (K7::IEmbodimentsManagerPtr em = ToApi7<K7::IEmbodimentsManagerPtr>(doc)) {
+			if (i < em->EmbodimentCount) {
+				if (K7::IEmbodimentPtr e = em->Embodiment[i]) {
+					K5::ksPartPtr part = ToApi5<K5::ksPartPtr>(e->Part);
+					if (part) return Part(std::make_unique<PartApi7>(doc, part));
+				}
+			}
+		}
+		return Part();
+	}
+	
+	bool SetCurrentEmbodiment(int i) override {
+		if (K7::IEmbodimentsManagerPtr em = ToApi7<K7::IEmbodimentsManagerPtr>(doc)) {
+			if (i < em->EmbodimentCount) return em->SetCurrentEmbodiment(i);
+		}
+		return false;
+	}
+	
+	bool AddMateConstraint(MateType type, const Node& object1, const Node& object2,
+	                       MateDir direction, MateFixed fixed, double value) override {
+		NodeApi7* n1 = dynamic_cast<NodeApi7*>(object1.node.get());
+		NodeApi7* n2 = dynamic_cast<NodeApi7*>(object2.node.get());
+		if (!n1 || !n2) return false;
+		K5::ksEntityPtr obj1 = n1->entity;
+		K5::ksEntityPtr obj2 = n2->entity;
+		if (!obj1 || !obj2) return false;
+		return doc->AddMateConstraint(type, obj1, obj2, direction, fixed, value);
+	}
+	
+	Part AddPart(const Part& part, const std::optional<std::string>& filePath) override {
+		PartApi7* p7 = dynamic_cast<PartApi7*>(part.part.get());
+		if (!p7 || !p7->part) return Part();
+		bool isPath = filePath.has_value();
+		std::string path = isPath ? Kompas3D::Utf8ToCp1251(filePath.value()) : std::string();
+		if (doc->SetPartFromFile(path.c_str(), p7->part, isPath)) {
+			int partIdx = 0;
+			K5::ksPartPtr p, newPart;
+			while (p = doc->GetPart(partIdx++)) newPart = p;
+			if (newPart) return Part(std::make_unique<PartApi7>(doc, newPart));
+		}
+		return Part();
+	}
 };
 
 //Doc3D::Doc3D(IUnknown* d) : pDoc(d) {

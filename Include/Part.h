@@ -23,8 +23,9 @@ public:
 		virtual ~PartImpl() = default;
 	};
 
-private:
 	std::unique_ptr<PartImpl> part;
+
+private:
 	//IUnknown* pDoc;
 	//IUnknown* CreateEntity(int type);
 	//IUnknown* GetDefaultEntity(int type);
@@ -57,7 +58,7 @@ public:
 	//Axis GetAxisOY();
 	//Axis GetAxisOZ();
 	//std::vector<Variable> GetVariables(bool isExternal = false);
-	//operator bool() const { return pPart; }
+	operator bool() const { return (bool)part; }
 };
 
 #endif

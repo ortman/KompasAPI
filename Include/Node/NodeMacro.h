@@ -18,10 +18,11 @@ public:
 public:
 	static inline int TYPE = 63; /* o3d_MacroObject */
 	NodeMacro() : Node(nullptr) {}
-	NodeMacro(std::unique_ptr<NodeImpl> p) : Node(std::move(p)) {
-		node->Create();
-	}
-	NodeMacro(std::unique_ptr<NodeImpl> p, bool show = true, const std::optional<std::string>& name = std::nullopt) : Node(std::move(p)) {
+	// Обёртка уже существующего макрообъекта (например, редактируемого)
+	NodeMacro(std::unique_ptr<NodeImpl> p) : Node(std::move(p)) {}
+	NodeMacro(NodeMacro&& other) noexcept = default;
+	NodeMacro& operator=(NodeMacro&& other) noexcept = default;
+	NodeMacro(std::unique_ptr<NodeImpl> p, bool show, const std::optional<std::string>& name = std::nullopt) : Node(std::move(p)) {
 		if (name.has_value()) node->SetName(name.value());
 		NodeMacroImpl* macro = dynamic_cast<NodeMacroImpl*>(node.get());
 		if (macro) macro->Show(show);

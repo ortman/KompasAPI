@@ -4,7 +4,7 @@
 #include "../Node.h"
 
 class Face : public Node {
-private:
+public:
 	class FaceImpl : virtual public Node::NodeImpl {
 	public:
 		virtual bool IsPlanar() = 0;
@@ -13,9 +13,7 @@ private:
 
 public:
 	static inline int TYPE = 6; /* o3d_face */
-	Face(std::unique_ptr<FaceImpl> p) : Node(std::move(p)) {
-		node->Create();
-	}
+	Face(std::unique_ptr<NodeImpl> p) : Node(std::move(p)) {}
 	//Face(const Node& node) : Node(node) {}
 	bool IsPlanar() {
 		FaceImpl* face = dynamic_cast<FaceImpl*>(node.get());

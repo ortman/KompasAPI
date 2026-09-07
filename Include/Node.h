@@ -30,7 +30,11 @@ public:
 	std::unique_ptr<NodeImpl> node;
 	static int TYPE;
 	Node(std::unique_ptr<NodeImpl> p) : node(std::move(p)) {}
-	//Node(const Node& node) : Node(node.p) {}
+	// Node владеет реализацией, поэтому копирование запрещено, а перемещение разрешено
+	Node(const Node& other) = delete;
+	Node& operator=(const Node& other) = delete;
+	Node(Node&& other) noexcept = default;
+	Node& operator=(Node&& other) noexcept = default;
 	virtual ~Node() {}
 	int GetType() const { return node->GetType(); }
 	bool IsType(int type) const { return node->GetType() == type; }
@@ -38,7 +42,6 @@ public:
 	Node& SetName(const std::string& name) { node->SetName(name); return *this; }
 	Node& Update() { node->Update(); return *this; }
 	operator bool() const { return node != nullptr; }
-	Node& operator=(const Node& other);
 };
 
 #endif

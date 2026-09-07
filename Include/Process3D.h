@@ -4,33 +4,7 @@
 #include "Node.h"
 #include "Part.h"
 #include "Panel.h"
-
-enum MateType : int {
-	MateCoincidence   = 0,  // совпадение объектов
-	MateParallel      = 1,  // параллельность
-	MatePerpendicular = 2,  // перпендикулярность
-	MateTangency      = 3,  // касательность
-	MateConcentric    = 4,  // концентричность
-	MateDistance      = 5,  // постоянное расстояние между объектами
-	MateAngle         = 6,  // постоянный угол между объектами
-	MateInPlace       = 7,  // создание компонента "на месте"
-	MateTransmission  = 9,  // Механическая передача
-	MateCamGear       = 10, // Кулачковый механизм. Кулачек-толкатель
-	MateSymmetric     = 11, // Симметрия
-	MateDependent     = 14  // Зависимое положение
-};
-
-enum MateDir : int {
-	MateDirUndefined  = 0,  // направление не учитывается
-	MateDirSame       = 1,  // объекты однонаправленные
-	MateDirOpposite   = -1  // объекты разнонаправленные
-};
-
-enum MateFixed : int {
-	MateFixedNone     = 0,  // детали не фиксируются
-	MateFixedFirst    = 1,  // фиксируется первая деталь
-	MateFixedSecond   = 2   // фиксируется вторая деталь
-};
+#include "Doc3D.h"
 
 class MateConstraint {
 private:

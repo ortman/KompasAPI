@@ -1,43 +1,57 @@
 #pragma once
 
-/*
- * #include "Axis.h"
- * 
- * K5::ksCurve3DPtr GetCurve3D(IUnknown* pDefinition) {
- * 	if (K5::ksDefaultObjectPtr def = pDefinition) return def->GetCurve3D();
- * 	if (K5::ksAxis2PlanesDefinitionPtr def = pDefinition) return def->GetCurve3D();
- * 	if (K5::ksAxis2PointsDefinitionPtr def = pDefinition) return def->GetCurve3D();
- * 	if (K5::ksAxisConefaceDefinitionPtr def = pDefinition) return def->GetCurve3D();
- * 	if (K5::ksAxisEdgeDefinitionPtr def = pDefinition) return def->GetCurve3D();
- * 	if (K5::ksAxisOperationsDefinitionPtr def = pDefinition) return def->GetCurve3D();
- * 	return NULL;
- * }
- * 
- * Vertex::Point3D Axis::GetFirstPoint() {
- * 	K5::ksCurve3DPtr curve = GetCurve3D(pDefinition);
- * 	K5::ksLineSeg3dParamPtr param = curve->GetCurveParam();
- * 	Vertex::Point3D res;
- * 	if (param->GetPointFirst(&res.x, &res.y, &res.z)) return res;
- * 	return {0., 0., 0.};
- * }
- * 
- * Vertex::Point3D Axis::GetLastPoint() {
- * 	K5::ksCurve3DPtr curve = GetCurve3D(pDefinition);
- * 	K5::ksLineSeg3dParamPtr param = curve->GetCurveParam();
- * 	Vertex::Point3D res;
- * 	if (param->GetPointLast(&res.x, &res.y, &res.z)) return res;
- * 	return {0., 0., 0.};
- * }
- * 
- * int Axis::TYPE = KConst3D::o3d_axisOX; // OX ?
- * 
- * ConeAxis::ConeAxis(IUnknown* pE, IDispatch* pD, const Face& coneFace, bool show) : Axis(pE, pD) {
- * 	K5::ksEntityPtr entity = pEntity;
- * 	K5::ksAxisConefaceDefinitionPtr def = pDefinition;
- * 	def->SetFace((K5::ksEntityPtr)coneFace.pEntity);
- * 	entity->hidden = !show;
- * 	entity->Create();
- * }
- * 
- * int ConeAxis::TYPE = KConst3D::o3d_axisConeFace;
- */
+#include "../../Include/Node/Axis.h"
+#include "../Node.hpp"
+#include "Face.hpp"
+
+class AxisApi7 : public NodeApi7, virtual public Axis::AxisImpl {
+protected:
+	K5::ksCurve3DPtr GetCurve3D() {
+		if (K5::ksDefaultObjectPtr d = def) return d->GetCurve3D();
+		if (K5::ksAxis2PlanesDefinitionPtr d = def) return d->GetCurve3D();
+		if (K5::ksAxis2PointsDefinitionPtr d = def) return d->GetCurve3D();
+		if (K5::ksAxisConefaceDefinitionPtr d = def) return d->GetCurve3D();
+		if (K5::ksAxisEdgeDefinitionPtr d = def) return d->GetCurve3D();
+		if (K5::ksAxisOperationsDefinitionPtr d = def) return d->GetCurve3D();
+		return nullptr;
+	}
+	K5::ksLineSeg3dParamPtr GetLineSegParam() {
+		K5::ksCurve3DPtr curve = GetCurve3D();
+		if (!curve) return nullptr;
+		return curve->GetCurveParam();
+	}
+
+public :
+	AxisApi7(K5::ksEntityPtr e, IDispatchPtr d) : NodeApi7(e, d) {}
+	void Show(bool show) override {
+		entity->hidden = !show;
+	}
+	Vertex::Point3D GetFirstPoint() override {
+		K5::ksLineSeg3dParamPtr param = GetLineSegParam();
+		if (!param) return {0., 0., 0.};
+		Vertex::Point3D res;
+		if (param->GetPointFirst(&res.x, &res.y, &res.z)) return res;
+		return {0., 0., 0.};
+	}
+	Vertex::Point3D GetLastPoint() override {
+		K5::ksLineSeg3dParamPtr param = GetLineSegParam();
+		if (!param) return {0., 0., 0.};
+		Vertex::Point3D res;
+		if (param->GetPointLast(&res.x, &res.y, &res.z)) return res;
+		return {0., 0., 0.};
+	}
+};
+
+class ConeAxisApi7 : public AxisApi7, public ConeAxis::ConeAxisImpl {
+public :
+	ConeAxisApi7(K5::ksEntityPtr e, IDispatchPtr d) : AxisApi7(e, d) {}
+	void SetFace(const Face& coneFace) override {
+		K5::ksAxisConefaceDefinitionPtr d = def;
+		NodeApi7* node = dynamic_cast<NodeApi7*>(coneFace.node.get());
+		if (node) {
+			K5::ksEntityPtr faceEntity = node->entity;
+			if (!faceEntity) throw Kompas3DException("Не могу получить коническую грань для Оси");
+			d->SetFace(faceEntity);
+		}
+	}
+};

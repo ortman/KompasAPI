@@ -49,6 +49,20 @@
  */
 int Node::TYPE = KConst3D::o3d_unknown;
 
+// Переход от интерфейса API5 к соответствующему дуальному интерфейсу API7
+template <typename T>
+inline T ToApi7(IUnknown* k5) {
+	if (!k5 || !ComEvent::kompas5) return nullptr;
+	return ComEvent::kompas5->TransferInterface(k5, KConst::ksAPI7Dual, 0);
+}
+
+// Переход от дуального интерфейса API7 к соответствующему интерфейсу API5
+template <typename T>
+inline T ToApi5(IUnknown* k7) {
+	if (!k7 || !ComEvent::kompas5) return nullptr;
+	return ComEvent::kompas5->TransferInterface(k7, KConst::ksAPI5Auto, 0);
+}
+
 class NodeApi7 : virtual public Node::NodeImpl {
 public:
 	K5::ksEntityPtr entity;

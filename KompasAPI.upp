@@ -41,6 +41,8 @@ file
 	Include/Node/NodeMacro.h,
 	Include/Node/MeshCopy.h,
 	Include/Node/CircularCopy.h,
+	Include/Node/ThreadDesignation.h,
+	Include/Node/CylindricSpiral.h,
 	Api7 readonly separator,
 	Api7/ComKompas.cpp,
 	Api7/ComKompas.h,
