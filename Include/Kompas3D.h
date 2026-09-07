@@ -12,7 +12,7 @@
 //#include "Node/ThreadDesignation.h"
 //#include "Node/CylindricSpiral.h"
 
-//#include "Panel.h"
+#include "Panel.h"
 
 class Kompas3D {
 public:

@@ -148,8 +148,6 @@
  * 	}
  * }
  * 
- * Panel* Panel::currentPanel = nullptr;
- * 
  * // Tab
  * Panel::Tab::~Tab() {
  * 	for (Property* p : createdProps) delete p;
@@ -196,8 +194,6 @@
  * //	}
  * //}
  * 
- * Panel::Tab* Panel::Tab::currentTab = nullptr;
- * 
  * // Property
  * Panel::Property::~Property() {
  * 	if (pProp) pProp->Release();
@@ -222,8 +218,6 @@
  * 	K7::IPropertyControlPtr c = pProp;
  * 	c->Name = Node::Utf8ToCp1251(name).c_str();
  * }
- * 
- * int Panel::Property::nextId = 1;
  * 
  * PropertyList& PropertyList::Add(PropertyVariant val) {
  * 	K7::IPropertyListPtr prop(pProp);

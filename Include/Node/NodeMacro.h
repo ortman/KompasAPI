@@ -17,6 +17,7 @@ public:
 	
 public:
 	static inline int TYPE = 63; /* o3d_MacroObject */
+	NodeMacro() : Node(nullptr) {}
 	NodeMacro(std::unique_ptr<NodeImpl> p) : Node(std::move(p)) {
 		node->Create();
 	}

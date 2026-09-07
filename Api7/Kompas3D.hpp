@@ -4,59 +4,43 @@
 #include "ComKompas.h"
 #include "../Include/Kompas3D.h"
 #include "Doc3D.hpp"
+#include "Panel.hpp"
 
-//#include "Panel.h"
+class KompasObjectNotifyLoc : public ComEvent {
+public:
+	KompasObjectNotifyLoc() : ComEvent(K5::DIID_ksKompasObjectNotify) {}
+	
+	STDMETHODIMP Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags,
+	                    DISPPARAMS* pDispParams, VARIANT* pVarResult,
+	                    EXCEPINFO* pExcepInfo, UINT* puArgErr) override {
+		switch((int)dispIdMember) {
+			case KConst::koOpenDocument: {
+				VARIANT& varDoc = pDispParams->rgvarg[pDispParams->cArgs - 1];
+				VARIANT& varType = pDispParams->rgvarg[pDispParams->cArgs - 2];
+				if (varDoc.vt == VT_DISPATCH && varType.vt == VT_I4 && Kompas3D::WhenOpenDocument) {
+					VariantInit(pVarResult);
+					pVarResult->vt = VT_BOOL;
+					Doc3D doc(std::make_unique<Doc3DApi7>(varDoc.pdispVal));
+					pVarResult->boolVal = Kompas3D::WhenOpenDocument(doc, varType.lVal);
+				}
+				break;
+			}
+			case KConst::koCreateDocument: {
+				VARIANT& varDoc = pDispParams->rgvarg[pDispParams->cArgs - 1];
+				VARIANT& varType = pDispParams->rgvarg[pDispParams->cArgs - 2];
+				if (varDoc.vt == VT_DISPATCH && varType.vt == VT_I4 && Kompas3D::WhenCreateDocument) {
+					VariantInit(pVarResult);
+					pVarResult->vt = VT_BOOL;
+					Doc3D doc(std::make_unique<Doc3DApi7>(varDoc.pdispVal));
+					pVarResult->boolVal = Kompas3D::WhenCreateDocument(doc, varType.lVal);
+				}
+				break;
+			}
+		}
+		return S_OK;
+	}
+};
 
-#include <stdint.h>
-
-//#include <ksConstants.h>
-//#include <ksConstants3D.h>
-
-//#ifdef _WIN32
-//	#include <windows.h>
-//#endif
-
-//IUnknown* pKompas = nullptr;
-//IUnknown* pKompas7 = nullptr;
-//bool comInit = false;
-//
-//class KompasObjectNotifyLoc : public ComEvent {
-//public:
-//	KompasObjectNotifyLoc() : ComEvent(K5::DIID_ksKompasObjectNotify) {}
-//	
-//	STDMETHODIMP Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags,
-//	                    DISPPARAMS* pDispParams, VARIANT* pVarResult,
-//	                    EXCEPINFO* pExcepInfo, UINT* puArgErr) override {
-//		switch((int)dispIdMember) {
-//			case KConst::koOpenDocument: {
-//				VARIANT& varDoc = pDispParams->rgvarg[pDispParams->cArgs - 1];
-//				VARIANT& varType = pDispParams->rgvarg[pDispParams->cArgs - 2];
-//				if (varDoc.vt == VT_DISPATCH && varType.vt == VT_I4 && Kompas3D::WhenOpenDocument) {
-//					VariantInit(pVarResult);
-//					pVarResult->vt = VT_BOOL;
-//					Doc3D doc(varDoc.pdispVal);
-//					pVarResult->boolVal = Kompas3D::WhenOpenDocument(doc, varType.lVal);
-//				}
-//				break;
-//			}
-//			case KConst::koCreateDocument: {
-//				VARIANT& varDoc = pDispParams->rgvarg[pDispParams->cArgs - 1];
-//				VARIANT& varType = pDispParams->rgvarg[pDispParams->cArgs - 2];
-//				if (varDoc.vt == VT_DISPATCH && varType.vt == VT_I4 && Kompas3D::WhenCreateDocument) {
-//					VariantInit(pVarResult);
-//					pVarResult->vt = VT_BOOL;
-//					Doc3D doc(varDoc.pdispVal);
-//					pVarResult->boolVal = Kompas3D::WhenCreateDocument(doc, varType.lVal);
-//				}
-//				break;
-//			}
-//		}
-//		return S_OK;
-//	}
-//};
-//
-//KompasObjectNotifyLoc kompasNotify;
-//
 //bool Kompas3D::Connect(bool open, bool visible) {
 //	if (pKompas && pKompas7) return true;
 //	HRESULT hr;
@@ -99,13 +83,6 @@
 //	if (comInit) CoUninitialize();
 //}
 
-//Doc3D Kompas3D::GetActiveDocument3D() {
-//	if (!Connect()) return nullptr;
-//	K5::KompasObjectPtr kompas(pKompas);
-//	K5::ksDocument3DPtr doc = kompas->ActiveDocument3D();
-//	return Doc3D(doc ? doc.GetInterfacePtr() : nullptr);
-//}
-
 //Doc3D Kompas3D::Open3D(std::string path, bool visible) {
 //	if (!Connect()) throw Kompas3DException("Нет подключения к Компас3D");
 //	K5::KompasObjectPtr kompas(pKompas);
@@ -136,12 +113,10 @@
 //	return param.GetInterfacePtr();
 //}
 
-//KompasEvent<bool(Doc3D&, int)> Kompas3D::WhenCreateDocument;
-//KompasEvent<bool(Doc3D&, int)> Kompas3D::WhenOpenDocument;
-
 class Kompas3DApi7 : public Kompas3D::Kompas3DImpl {
 private:
 	bool comInit = false;
+	KompasObjectNotifyLoc kompasNotify;
 
 public:
 	Kompas3DApi7(IDispatch *k5) {

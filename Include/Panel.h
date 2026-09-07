@@ -20,7 +20,7 @@ protected:
 	void CreatePropertyManagerNotify(IUnknown* p);
 	void RemovePropertyManagerNotify(IUnknown* p);
 	
-	static Panel* currentPanel;
+	static inline Panel* currentPanel = nullptr;
 	
 public:
 	KompasEvent<bool(int buttonId)> WhenButtonClick;
@@ -49,7 +49,7 @@ private:
 	void Create(Property* property);
 	
 public:
-	static Tab* currentTab;
+	static inline Tab* currentTab = nullptr;
 	std::vector<Panel::Property*> props;
 
 	Tab(const char* name) : name(name) {
@@ -83,7 +83,7 @@ protected:
 	std::string name;
 	PropertyVariant defaultVal;
 	int type;
-	static int nextId;
+	static inline int nextId = 1;
 	Panel::Tab* tab = NULL;
 
 	Property(const char* name, int type, PropertyVariant val) : name(name), type(type), defaultVal(val) {
