@@ -49,7 +49,7 @@ public:
 		virtual void Line(double x1, double y1, double x2, double y2, LineStyle style) = 0;
 		virtual void LineTo(double x, double y, LineStyle style) = 0;
 		virtual void Circle(double cx, double cy, double r, LineStyle style) = 0;
-		virtual void Rect(double x, double y, double h, double w, double angle, LineStyle style) = 0;
+		virtual void Rect(double x, double y, double w, double h, double angle, LineStyle style) = 0;
 		virtual void RegularPolygon(double cx, double cy, double r, int count, bool describe, double angle, LineStyle style) = 0;
 		virtual void Point(double x, double y, LineStyle style) = 0;
 		virtual void ArcByAngle(double cx, double cy, double r, double f1, double f2, bool cw, LineStyle style) = 0;
@@ -116,9 +116,9 @@ public:
 		if (sketch) sketch->Circle(cx, cy, r, style);
 		return *this;
 	}
-	Sketch& Rect(double x, double y, double h, double w, double angle = 0.0, LineStyle style = LineStyle::Main) {
+	Sketch& Rect(double x, double y, double w, double h, double angle = 0.0, LineStyle style = LineStyle::Main) {
 		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
-		if (sketch) sketch->Rect(x, y, h, w, angle, style);
+		if (sketch) sketch->Rect(x, y, w, h, angle, style);
 		return *this;
 	}
 	Sketch& RegularPolygon(double cx, double cy, double r, int count, bool describe = true, double angle = 0.0, LineStyle style = LineStyle::Main) {

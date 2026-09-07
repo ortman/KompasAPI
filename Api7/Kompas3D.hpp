@@ -5,16 +5,6 @@
 #include "../Include/Kompas3D.h"
 #include "Doc3D.hpp"
 
-#include "Node/Sketch.hpp"
-#include "Node/BaseExtrusion.hpp"
-#include "Node/CutExtrusion.hpp"
-//#include "Node/CutEvolution.hpp"
-//#include "Node/CutRotated.hpp"
-#include "Node/MeshCopy.hpp"
-//#include "Node/CircularCopy.hpp"
-//#include "Node/ThreadDesignation.hpp"
-//#include "Node/CylindricSpiral.hpp"
-
 //#include "Panel.h"
 
 #include <stdint.h>
@@ -151,14 +141,12 @@
 
 class Kompas3DApi7 : public Kompas3D::Kompas3DImpl {
 private:
-	K7::IApplicationPtr kompas7 = nullptr;
-	K5::KompasObjectPtr kompas5 = nullptr;
 	bool comInit = false;
 
 public:
 	Kompas3DApi7(IDispatch *k5) {
-		kompas5 = k5;
-		kompas5.AddRef();
+		ComEvent::kompas5 = k5;
+		ComEvent::kompas5.AddRef();
 	}
 	
 	Kompas3DApi7(bool open, bool visible) {
@@ -168,25 +156,25 @@ public:
 			comInit = SUCCEEDED(hr);
 		}
 		if (!comInit) return;
-		hr = kompas5.GetActiveObject(L"KOMPAS.Application.5");
+		hr = ComEvent::kompas5.GetActiveObject(L"KOMPAS.Application.5");
 		if (FAILED(hr)) {
 			if (open) {
-				hr = kompas5.CreateInstance(L"KOMPAS.Application.5");
+				hr = ComEvent::kompas5.CreateInstance(L"KOMPAS.Application.5");
 			} else {
-				kompas5 = nullptr;
+				ComEvent::kompas5 = nullptr;
 				return;
 			}
 		}
 		if (SUCCEEDED(hr)) {
-			kompas5->Visible = visible;
-			hr = kompas7.GetActiveObject(L"KOMPAS.Application.7");
+			ComEvent::kompas5->Visible = visible;
+			hr = ComEvent::kompas7.GetActiveObject(L"KOMPAS.Application.7");
 			if (SUCCEEDED(hr)) {
 				//kompasNotify.Subscribe(pKompas);
 				return;
 			}
 		}
-		kompas5 = nullptr;
-		kompas7 = nullptr;
+		ComEvent::kompas5 = nullptr;
+		ComEvent::kompas7 = nullptr;
 	}
 	
 	~Kompas3DApi7() {
@@ -196,41 +184,26 @@ public:
 		}
 	}
 	
-	bool IsConnected() { return kompas5 && kompas7; }
+	bool IsConnected() { return ComEvent::kompas5 && ComEvent::kompas7; }
 	
 	Doc3D GetActiveDocument3D() override {
-		if (kompas5) {
-			K5::ksDocument3DPtr doc = kompas5->ActiveDocument3D();
+		if (ComEvent::kompas5) {
+			K5::ksDocument3DPtr doc = ComEvent::kompas5->ActiveDocument3D();
 			if (doc) return Doc3D(std::make_unique<Doc3DApi7>(doc));
 		}
 		return Doc3D();
 	}
 	
 	void Message(const std::string& txt) override {
-		if (kompas5) kompas5->ksMessage(Kompas3D::Utf8ToCp1251(txt).c_str());
+		if (ComEvent::kompas5) ComEvent::kompas5->ksMessage(Kompas3D::Utf8ToCp1251(txt).c_str());
 	}
 	
 	void Error(const std::string& txt) override {
-		if (kompas5) kompas5->ksError(Kompas3D::Utf8ToCp1251(txt).c_str());
+		if (ComEvent::kompas5) ComEvent::kompas5->ksError(Kompas3D::Utf8ToCp1251(txt).c_str());
 	}
 	
 	std::string SystemPath(long type) override {
-		return kompas5 ? Kompas3D::Cp1251ToUtf8(kompas5->ksSystemPath(type)) : std::string();
-	}
-	
-	template <typename T>
-	static T GetParamStruct(int type) {
-		return kompas5 ? kompas5->GetParamStruct(type) : nullptr;
-	}
-	
-	template <typename T>
-	static T ToApi7(IUnknown* k5) {
-		return kompas5 ? kompas5->TransferInterface(k5, KConst::ksAPI7Dual, 0) : nullptr;
-	}
-	
-	template <typename T>
-	static T ToApi5(IUnknown* k7) {
-		return kompas5 ? kompas5->TransferInterface(k7, KConst::ksAPI5Auto, 0) : nullptr;
+		return ComEvent::kompas5 ? Kompas3D::Cp1251ToUtf8(ComEvent::kompas5->ksSystemPath(type)) : std::string();
 	}
 };
 
@@ -261,27 +234,5 @@ void Kompas3D::ComDisconnect() {
 //	if (pKompas7) pKompas7->Release();
 //	if (comInit) CoUninitialize();
 }
-
-#define KOMPAS_PARAM(p) template K5::p##Ptr Kompas3DApi7::GetParamStruct(int);
-KOMPAS_PARAM(ksRectangleParam)
-KOMPAS_PARAM(ksRegularPolygonParam)
-KOMPAS_PARAM(ksEllipseParam)
-KOMPAS_PARAM(ksEllipseArcParam)
-KOMPAS_PARAM(ksEllipseArcParam1)
-KOMPAS_PARAM(ksUserParam)
-
-#define KOMPAS_API7(p) template K7::p##Ptr Kompas3DApi7::ToApi7(IUnknown*);
-KOMPAS_API7(IEmbodimentsManager)
-KOMPAS_API7(IThread)
-KOMPAS_API7(IAxis3D)
-KOMPAS_API7(ICutRotated)
-KOMPAS_API7(IKompasDocument3D1)
-KOMPAS_API7(IPart7)
-KOMPAS_API7(IModelObject)
-
-#define KOMPAS_API5(p) template K5::p##Ptr Kompas3DApi7::ToApi5(IUnknown*);
-KOMPAS_API5(ksPart)
-KOMPAS_API5(ksFaceDefinition)
-KOMPAS_API5(ksEdgeDefinition)
 
 #endif

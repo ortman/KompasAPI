@@ -15,74 +15,80 @@
 
 class ComEvent : public IDispatch {
 protected:
-    ULONG m_refCount = 1;
-    REFIID iid;
+	ULONG m_refCount = 1;
+	REFIID iid;
 	DWORD cookie = 0;
 
 public:
+	static inline K7::IApplicationPtr kompas7 = nullptr;
+	static inline K5::KompasObjectPtr kompas5 = nullptr;
+
 	ComEvent(REFIID riid) : iid(riid) {}
 	
-    STDMETHODIMP QueryInterface(REFIID riid, void** ppvObject) override {
-        if (!ppvObject) return E_POINTER;
-        if (riid == IID_IUnknown || riid == IID_IDispatch || riid == iid) {
-            *ppvObject = static_cast<IDispatch*>(this);
-            AddRef();
-            return S_OK;
-        }
-        *ppvObject = nullptr;
-        return E_NOINTERFACE;
-    }
-
-    STDMETHODIMP_(ULONG) AddRef() override { return InterlockedIncrement(&m_refCount); }
-    STDMETHODIMP_(ULONG) Release() override {
-        ULONG res = InterlockedDecrement(&m_refCount);
-        if (res == 0) delete this;
-        return res;
-    }
-
-    // IDispatch (для событий заглушки не вызываются, важен только Invoke)
-    STDMETHODIMP GetTypeInfoCount(UINT* pctinfo) override { return E_NOTIMPL; }
-    STDMETHODIMP GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo** ppTInfo) override { return E_NOTIMPL; }
-    STDMETHODIMP GetIDsOfNames(REFIID riid, LPOLESTR* rgszNames, UINT cNames, LCID lcid, DISPID* rgDispId) override { return E_NOTIMPL; }
-    
-	HRESULT Subscribe(IUnknown* obj) {
-	    if (!obj) return E_POINTER;
-	
-	    IConnectionPointContainer* pCPC = nullptr;
-	    IConnectionPoint* pCP = nullptr;
-	
-	    // 1. Запрашиваем контейнер точек подключения у объекта КОМПАС
-	    HRESULT hr = obj->QueryInterface(IID_IConnectionPointContainer, (void**)&pCPC);
-	    if (FAILED(hr)) return hr;
-	
-	    // 2. Ищем точку именно под ksKompasObjectNotify
-	    hr = pCPC->FindConnectionPoint(iid, &pCP);
-	    pCPC->Release();
-	    if (FAILED(hr)) return hr;
-	
-	    // 3. Передаем наш Sink и получаем токен отписки (Cookie)
-	    hr = pCP->Advise(static_cast<IUnknown*>(this), &cookie);
-	    pCP->Release();
-	
-	    return hr;
+	STDMETHODIMP QueryInterface(REFIID riid, void** ppvObject) override {
+		if (!ppvObject) return E_POINTER;
+		if (riid == IID_IUnknown || riid == IID_IDispatch || riid == iid) {
+		*ppvObject = static_cast<IDispatch*>(this);
+		AddRef();
+		return S_OK;
+		}
+		*ppvObject = nullptr;
+		return E_NOINTERFACE;
 	}
 	
+	STDMETHODIMP_(ULONG) AddRef() override { return InterlockedIncrement(&m_refCount); }
+
+	STDMETHODIMP_(ULONG) Release() override {
+		ULONG res = InterlockedDecrement(&m_refCount);
+		if (res == 0) delete this;
+		return res;
+	}
+	
+	// IDispatch (для событий заглушки не вызываются, важен только Invoke)
+	STDMETHODIMP GetTypeInfoCount(UINT* pctinfo) override { return E_NOTIMPL; }
+
+	STDMETHODIMP GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo** ppTInfo) override { return E_NOTIMPL; }
+
+	STDMETHODIMP GetIDsOfNames(REFIID riid, LPOLESTR* rgszNames, UINT cNames, LCID lcid, DISPID* rgDispId) override { return E_NOTIMPL; }
+
+	HRESULT Subscribe(IUnknown* obj) {
+		if (!obj) return E_POINTER;
+		
+		IConnectionPointContainer* pCPC = nullptr;
+		IConnectionPoint* pCP = nullptr;
+		
+		// 1. Запрашиваем контейнер точек подключения у объекта КОМПАС
+		HRESULT hr = obj->QueryInterface(IID_IConnectionPointContainer, (void**)&pCPC);
+		if (FAILED(hr)) return hr;
+		
+		// 2. Ищем точку именно под ksKompasObjectNotify
+		hr = pCPC->FindConnectionPoint(iid, &pCP);
+		pCPC->Release();
+		if (FAILED(hr)) return hr;
+		
+		// 3. Передаем наш Sink и получаем токен отписки (Cookie)
+		hr = pCP->Advise(static_cast<IUnknown*>(this), &cookie);
+		pCP->Release();
+		
+		return hr;
+	}
+
 	HRESULT Unsubscribe(IUnknown* obj) {
-	    IConnectionPointContainer* pCPC = nullptr;
-	    IConnectionPoint* pCP = nullptr;
-	
-	    HRESULT hr = obj->QueryInterface(IID_IConnectionPointContainer, (void**)&pCPC);
-	    if (FAILED(hr)) return hr;
-	
-	    hr = pCPC->FindConnectionPoint(iid, &pCP);
-	    pCPC->Release();
-	    if (FAILED(hr)) return hr;
-	
-	    // Разрываем соединение
-	    hr = pCP->Unadvise(cookie);
-	    pCP->Release();
-	
-	    return hr;
+		IConnectionPointContainer* pCPC = nullptr;
+		IConnectionPoint* pCP = nullptr;
+		
+		HRESULT hr = obj->QueryInterface(IID_IConnectionPointContainer, (void**)&pCPC);
+		if (FAILED(hr)) return hr;
+		
+		hr = pCPC->FindConnectionPoint(iid, &pCP);
+		pCPC->Release();
+		if (FAILED(hr)) return hr;
+		
+		// Разрываем соединение
+		hr = pCP->Unadvise(cookie);
+		pCP->Release();
+		
+		return hr;
 	}
 };
 

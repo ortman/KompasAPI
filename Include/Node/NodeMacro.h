@@ -9,6 +9,10 @@ public:
 	class NodeMacroImpl : virtual public Node::NodeImpl {
 	public:
 		virtual void Show(bool show) = 0;
+		virtual void Add(const Node& n) = 0;
+		virtual std::vector<Node> GetNodes() = 0;
+		virtual bool SetUserParam(void* param, size_t size, int cmd) = 0;
+		virtual bool GetUserParam(void* param, size_t size) = 0;
 	};
 	
 public:
@@ -23,11 +27,24 @@ public:
 		node->Create();
 	}
 	//NodeMacro(const Node& node) : Node(node.pEntity, node.pDefinition) {}
-	//NodeMacro(IUnknown* pEntity, IDispatch* pDefinition = NULL, bool show = true, const std::optional<std::string>& name = std::nullopt);
-	//NodeMacro& Add(Node node);
-	//std::vector<Node> GetNodes();
-	//bool SetUserParam(void* param, size_t size, int cmd);
-	//bool GetUserParam(void* param, size_t size);
+	NodeMacro& Add(const Node& n) {
+		NodeMacroImpl* macro = dynamic_cast<NodeMacroImpl*>(node.get());
+		if (macro) macro->Add(n);
+		return *this;
+	}
+	std::vector<Node> GetNodes() {
+		NodeMacroImpl* macro = dynamic_cast<NodeMacroImpl*>(node.get());
+		if (macro) return macro->GetNodes();
+		return std::vector<Node>();
+	}
+	bool SetUserParam(void* param, size_t size, int cmd) {
+		NodeMacroImpl* macro = dynamic_cast<NodeMacroImpl*>(node.get());
+		return macro && macro->SetUserParam(param, size, cmd);
+	}
+	bool GetUserParam(void* param, size_t size) {
+		NodeMacroImpl* macro = dynamic_cast<NodeMacroImpl*>(node.get());
+		return macro && macro->GetUserParam(param, size);
+	}
 	NodeMacro& Show(bool show = true) {
 		NodeMacroImpl* macro = dynamic_cast<NodeMacroImpl*>(node.get());
 		if (macro) macro->Show(show);

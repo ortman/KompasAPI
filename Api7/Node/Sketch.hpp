@@ -76,8 +76,8 @@ public :
 		lastX = cx;
 		lastY = cy;
 	}
-	void Rect(double x, double y, double h, double w, double angle, LineStyle style) override {
-		K5::ksRectangleParamPtr param = Kompas3DApi7::GetParamStruct<K5::ksRectangleParamPtr>(KConst::ko_RectangleParam);
+	void Rect(double x, double y, double w, double h, double angle, LineStyle style) override {
+		K5::ksRectangleParamPtr param = ComEvent::kompas5->GetParamStruct(KConst::ko_RectangleParam);
 		if (!param) return;
 		BeginEdit();
 		param->Init();
@@ -92,7 +92,7 @@ public :
 		lastY = y + h;
 	}
 	void RegularPolygon(double cx, double cy, double r, int count, bool describe, double angle, LineStyle style) override {
-		K5::ksRegularPolygonParamPtr param = Kompas3DApi7::GetParamStruct<K5::ksRegularPolygonParamPtr>(KConst::ko_RegularPolygonParam);
+		K5::ksRegularPolygonParamPtr param = ComEvent::kompas5->GetParamStruct(KConst::ko_RegularPolygonParam);
 		if (!param) return;
 		BeginEdit();
 		param->Init();
@@ -131,7 +131,7 @@ public :
 		lastY = y3;
 	}
 	void Ellipse(double cx, double cy, double a, double b, double angle, LineStyle style) override {
-		K5::ksEllipseParamPtr param = Kompas3DApi7::GetParamStruct<K5::ksEllipseParamPtr>(KConst::ko_EllipseParam);
+		K5::ksEllipseParamPtr param = ComEvent::kompas5->GetParamStruct(KConst::ko_EllipseParam);
 		if (!param) return;
 		BeginEdit();
 		param->Init();
@@ -146,7 +146,7 @@ public :
 		lastY = cy;
 	}
 	void EllipseArc(double cx, double cy, double a, double b, double a1, double a2, bool cw, double angle, LineStyle style) override {
-		K5::ksEllipseArcParamPtr param = Kompas3DApi7::GetParamStruct<K5::ksEllipseArcParamPtr>(KConst::ko_EllipsArcParam);
+		K5::ksEllipseArcParamPtr param = ComEvent::kompas5->GetParamStruct(KConst::ko_EllipsArcParam);
 		if (!param) return;
 		BeginEdit();
 		param->Init();
