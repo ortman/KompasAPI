@@ -5,6 +5,18 @@
 #include "../Include/Kompas3D.h"
 #include "Doc3D.hpp"
 
+#include "Node/Sketch.hpp"
+//#include "Node/BaseExtrusion.hpp"
+//#include "Node/CutExtrusion.hpp"
+//#include "Node/CutEvolution.hpp"
+//#include "Node/CutRotated.hpp"
+//#include "Node/MeshCopy.hpp"
+//#include "Node/CircularCopy.hpp"
+//#include "Node/ThreadDesignation.hpp"
+//#include "Node/CylindricSpiral.hpp"
+
+//#include "Panel.h"
+
 #include <stdint.h>
 
 //#include <ksConstants.h>
@@ -200,19 +212,19 @@
 //KOMPAS_API5(ksFaceDefinition)
 //KOMPAS_API5(ksEdgeDefinition)
 
-class K3D_API7_Kompas3D : public Kompas3D::K3D_Kompas3D {
+class Kompas3DApi7 : public Kompas3D::Kompas3DImpl {
 private:
 	K7::IApplicationPtr kompas7 = nullptr;
 	K5::KompasObjectPtr kompas5 = nullptr;
 	bool comInit = false;
 
 public:
-	K3D_API7_Kompas3D(IDispatch *k5) {
+	Kompas3DApi7(IDispatch *k5) {
 		kompas5 = k5;
 		kompas5.AddRef();
 	}
 	
-	K3D_API7_Kompas3D(bool open, bool visible) {
+	Kompas3DApi7(bool open, bool visible) {
 		HRESULT hr;
 		if (!comInit) {
 			hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
@@ -240,7 +252,7 @@ public:
 		kompas7 = nullptr;
 	}
 	
-	~K3D_API7_Kompas3D() {
+	~Kompas3DApi7() {
 		if (comInit) {
 			//TODO: unsubscribe
 			CoUninitialize();
@@ -252,7 +264,7 @@ public:
 	Doc3D GetActiveDocument3D() override {
 		if (kompas5) {
 			K5::ksDocument3DPtr doc = kompas5->ActiveDocument3D();
-			if (doc) return Doc3D(std::move(std::make_unique<K3D_API7_Doc3D>(doc)));
+			if (doc) return Doc3D(std::make_unique<Doc3DApi7>(doc));
 		}
 		return Doc3D();
 	}
@@ -277,13 +289,13 @@ DllExport void LIBRARYENTRY(unsigned int comm) {
 }
 
 DllExport int LibInterfaceNotifyEntry(IDispatch *application) {
-	Kompas3D::SetKompas(std::move(std::make_unique<K3D_API7_Kompas3D>(application)));
+	Kompas3D::SetKompas(std::move(std::make_unique<Kompas3DApi7>(application)));
 	return 1;
 }
 
 bool Kompas3D::ComConnect(bool open, bool visible) {
-	if (dynamic_cast<K3D_API7_Kompas3D*>(kompas.get())) return true;
-	std::unique_ptr<K3D_API7_Kompas3D> comKompas = std::make_unique<K3D_API7_Kompas3D>(open, visible);
+	if (dynamic_cast<Kompas3DApi7*>(kompas.get())) return true;
+	std::unique_ptr<Kompas3DApi7> comKompas = std::make_unique<Kompas3DApi7>(open, visible);
 	bool isConnected = comKompas->IsConnected();
 	if (isConnected) Kompas3D::SetKompas(std::move(comKompas));
 	return isConnected;

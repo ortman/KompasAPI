@@ -1,3 +1,38 @@
+#include "../Include/Part.h"
+#include "../Include/Kompas3D.h"
+#include "Node.hpp"
+#include "Node/Plane.hpp"
+#include "Node/Sketch.hpp"
+#include "Node/NodeMacro.hpp"
+
+class PartApi7 : public Part::PartImpl {
+private:
+	K5::ksDocument3DPtr doc;
+	K5::ksPartPtr part;
+	
+public:
+	PartApi7(K5::ksDocument3DPtr d, K5::ksPartPtr p) : doc(d), part(p) {}
+	
+	std::string Name() {
+		return Kompas3D::Cp1251ToUtf8(part->name);
+	}
+	
+	std::unique_ptr<Node::NodeImpl> CreateImpl(int type) {
+		K5::ksEntityPtr entity = part->NewEntity(type);
+		if (!entity) return nullptr;
+		switch (type) {
+			case 5:  return std::make_unique<SketchApi7>(entity, nullptr);
+			case 63: return std::make_unique<NodeMacroApi7>(entity, nullptr);
+			default: return std::make_unique<NodeApi7>(entity, nullptr);
+		}
+	}
+
+	virtual Plane GetPlane(int type) {
+		K5::ksEntityPtr entity = part->GetDefaultEntity(type);
+		return Plane(std::make_unique<PlaneApi7>(entity, nullptr));
+	}
+};
+
 /*
  * #include "Kompas3D.h"
  * #include "Part.h"

@@ -1,3 +1,14 @@
+#pragma once
+
+#include "../../Include/Node/Plane.h"
+#include "../Node.hpp"
+
+class PlaneApi7 : public NodeApi7, public Plane::PlaneImpl {
+public :
+	PlaneApi7(K5::ksEntityPtr e, IDispatchPtr d) : NodeApi7(e, d) {
+	}
+};
+
 /*
  * #include "Plane.h"
  * 

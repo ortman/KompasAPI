@@ -7,36 +7,37 @@
 
 class Kompas3DException : public std::exception {
 protected:
-    std::string message;
+	std::string message;
+
 public:
-    Kompas3DException(std::string msg) : message(std::move(msg)) {}
-    const char* what() const noexcept override { return message.c_str(); }
+	Kompas3DException(std::string msg) : message(std::move(msg)) {}
+	const char* what() const noexcept override { return message.c_str(); }
 };
 
 class Node {
-protected:
-	class K3D_Node {
+public:
+	class NodeImpl {
 	public:
-		virtual int GetType() const;
-		virtual std::string GetName() const;
-		virtual void SetName(const std::string& name);
-		virtual void Update();
-		virtual operator bool() const;
+		virtual int GetType() const = 0;
+		virtual std::string GetName() const = 0;
+		virtual void SetName(const std::string& name) = 0;
+		virtual void Create() = 0;
+		virtual void Update() = 0;
+		virtual ~NodeImpl() = default;
 	};
 
 public:
-	K3D_Node p;
-	
+	std::unique_ptr<NodeImpl> node;
 	static int TYPE;
-	Node(const K3D_Node& p) : p(p) {}
-	Node(const Node& node) : Node(node.p) {}
-	virtual ~Node();
-	int GetType() const { return p.GetType(); }
-	bool IsType(int type) const { return p.GetType() == type; }
-	std::string GetName() const { return p.GetName(); }
-	Node& SetName(const std::string& name) { p.SetName(name); return *this; }
-	Node& Update() { p.Update(); return *this; }
-	operator bool() const { return p; }
+	Node(std::unique_ptr<NodeImpl> p) : node(std::move(p)) {}
+	//Node(const Node& node) : Node(node.p) {}
+	virtual ~Node() {}
+	int GetType() const { return node->GetType(); }
+	bool IsType(int type) const { return node->GetType() == type; }
+	std::string GetName() const { return node->GetName(); }
+	Node& SetName(const std::string& name) { node->SetName(name); return *this; }
+	Node& Update() { node->Update(); return *this; }
+	operator bool() const { return node != nullptr; }
 	Node& operator=(const Node& other);
 };
 

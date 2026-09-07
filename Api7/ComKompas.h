@@ -7,10 +7,10 @@
 	#import "kAPI5.tlb" named_guids rename_namespace("K5") no_implementation no_registry
 	#import "kAPI7.tlb" named_guids rename_namespace("K7") no_implementation no_registry
 #else
-	#include <ksConstants.tlh>
-	#include <ksConstants3D.tlh>
-	#include <kAPI5.tlh>
-	#include <kAPI7.tlh>
+	#include "tlh/ksConstants.tlh"
+	#include "tlh/ksConstants3D.tlh"
+	#include "tlh/kAPI5.tlh"
+	#include "tlh/kAPI7.tlh"
 #endif
 
 class ComEvent : public IDispatch {

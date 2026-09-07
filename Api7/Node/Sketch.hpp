@@ -1,3 +1,30 @@
+#pragma once
+
+#include "../../Include/Node/Sketch.h"
+#include "Plane.hpp"
+
+class SketchApi7 : public NodeApi7, public Sketch::SketchImpl {
+public :
+	SketchApi7(K5::ksEntityPtr e, IDispatchPtr d) : NodeApi7(e, d) {}
+	void SetPlane(const Plane& plane) {
+		K5::ksSketchDefinitionPtr d = def;
+		NodeApi7* node = dynamic_cast<NodeApi7*>(plane.node.get());
+		if (node) {
+			K5::ksEntityPtr planeEntity = node->entity;
+			if (!planeEntity) throw Kompas3DException("Не могу получить Plane для Эскиза");
+			d->SetPlane(planeEntity);
+		}
+	}
+	void SetAngle(double angle) {
+		K5::ksSketchDefinitionPtr d = def;
+		d->angle = angle;
+	}
+	void SetLocation(double locX, double locY) {
+		K5::ksSketchDefinitionPtr d = def;
+		d->SetLocation(locX, locY);
+	}
+};
+
 /*
  * #include "Sketch.h"
  * #include "../Kompas3D.h"

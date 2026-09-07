@@ -4,6 +4,10 @@
 //#include "ComKompas.hpp"
 #include "../Include/Doc3D.h"
 #include "../Include/Kompas3D.h"
+
+#include "Part.hpp"
+#include "Node/NodeMacro.hpp"
+
 #include <filesystem>
 #include <numbers>
 
@@ -41,12 +45,12 @@ public:
 	friend class Doc3D;
 };
 
-class K3D_API7_Doc3D : public Doc3D::K3D_Doc3D {
+class Doc3DApi7 : public Doc3D::Doc3DImpl {
 private:
 	K5::ksDocument3DPtr doc = nullptr;
 
 public:
-	K3D_API7_Doc3D(K5::ksDocument3DPtr p) {
+	Doc3DApi7(K5::ksDocument3DPtr p) {
 		doc = p;
 		if (!doc) throw Kompas3DException("Потерян указатель на документ");
 	}
@@ -88,6 +92,18 @@ public:
 		std::filesystem::path fp(path);
 		fp.replace_extension(params.format.Ext());
 		return doc->SaveAsToAdditionFormat(Kompas3D::Utf8ToCp1251(fp.string()).c_str(), formatParam);
+	}
+	
+	Part GetTopPart() override {
+		if (doc) {
+			K5::ksPartPtr top = doc->GetPart(KConst3D::pTop_Part);
+			if (top) {
+				return Part(std::make_unique<PartApi7>(doc, top));
+			}
+		}
+//	if (!top) throw Kompas3DException("Не могу получить Top Part");
+//	return Part(pDoc, top.GetInterfacePtr());
+		return Part();
 	}
 };
 

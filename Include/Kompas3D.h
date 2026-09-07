@@ -2,29 +2,18 @@
 #define _KOMPAS3D_H_
 
 #include "Doc3D.h"
-//#include "Node/Sketch.h"
-
-//#include "Node/NodeMacro.h"
-//#include "Node/BaseExtrusion.h"
-//#include "Node/CutExtrusion.h"
-//#include "Node/CutEvolution.h"
-//#include "Node/CutRotated.h"
-//#include "Node/MeshCopy.h"
-//#include "Node/CircularCopy.h"
-//#include "Node/ThreadDesignation.h"
-//#include "Node/CylindricSpiral.h"
-
+#include "Node/Sketch.h"
 //#include "Panel.h"
 
 class Kompas3D {
 public:
-	class K3D_Kompas3D {
+	class Kompas3DImpl {
 	public:
 		virtual Doc3D GetActiveDocument3D() { return Doc3D(); }
 		virtual void Message(const std::string& txt) {}
 		virtual void Error(const std::string& txt) {}
 		virtual std::string SystemPath(long type) { return std::string(); }
-		virtual ~K3D_Kompas3D() = default;
+		virtual ~Kompas3DImpl() = default;
 	};
 
 	inline static KompasEvent<bool(Doc3D& doc, int docType)>  WhenCreateDocument;
@@ -48,7 +37,7 @@ public:
 	static void RunCommand(uint32_t comm);
 	static std::string Cp1251ToUtf8(const char* cp1251Str);
 	static std::string Utf8ToCp1251(const std::string& utf8Str);
-	static void SetKompas(std::unique_ptr<K3D_Kompas3D> app) { kompas = std::move(app); }
+	static void SetKompas(std::unique_ptr<Kompas3DImpl> app) { kompas = std::move(app); }
 	static bool ComConnect(bool open = false, bool visible = true);
 	static void ComDisconnect();
 	
@@ -56,7 +45,7 @@ public:
 //	friend class KProcess3D;
 
 private:
-	inline static std::unique_ptr<K3D_Kompas3D> kompas = std::make_unique<K3D_Kompas3D>();
+	inline static std::unique_ptr<Kompas3DImpl> kompas = std::make_unique<Kompas3DImpl>();
 //	static IUnknown* CreatePropertyManager();
 //	static IUnknown* CreateProcessParam();
 };

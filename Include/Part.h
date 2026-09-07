@@ -15,39 +15,49 @@ public:
 		std::string name;
 		std::string comment;
 	};
+	class PartImpl {
+	public:
+		virtual std::string Name() { return std::string(); }
+		virtual std::unique_ptr<Node::NodeImpl> CreateImpl(int type) { return nullptr; }
+		virtual Plane GetPlane(int type) = 0;
+		virtual ~PartImpl() = default;
+	};
 
 private:
-	IUnknown* pDoc;
-	IUnknown* CreateEntity(int type);
-	IUnknown* GetDefaultEntity(int type);
+	std::unique_ptr<PartImpl> part;
+	//IUnknown* pDoc;
+	//IUnknown* CreateEntity(int type);
+	//IUnknown* GetDefaultEntity(int type);
 	
 public:
-	IUnknown* pPart;
-	Part(IUnknown* pDoc, IUnknown* pPart);
-	Part() : Part(nullptr, nullptr) {}
-	Part(const Part& part);                // Конструктор копирования
-	Part& operator=(const Part& part);     // Оператор копирующего присваивания
-	Part(Part&& part) noexcept;            // Конструктор перемещения
-	Part& operator=(Part&& part) noexcept; // Оператор перемещающего присваивания
-	~Part();
-	std::vector<Node> GetNodes();
+	Part() : part(nullptr) {}
+	Part(std::unique_ptr<PartImpl> p) : part(std::move(p)) {}
+	//IUnknown* pPart;
+	//Part(IUnknown* pDoc, IUnknown* pPart);
+	//Part() : Part(nullptr, nullptr) {}
+	//Part(const Part& part);                // Конструктор копирования
+	//Part& operator=(const Part& part);     // Оператор копирующего присваивания
+	//Part(Part&& part) noexcept;            // Конструктор перемещения
+	//Part& operator=(Part&& part) noexcept; // Оператор перемещающего присваивания
+	//~Part();
+	//std::vector<Node> GetNodes();
 	template <typename T, typename... Args>
 	T Create(Args&&... args) {
 		static_assert(std::is_base_of<Node, T>::value, "T must be derived from Node");
-		IUnknown* entity = CreateEntity(T::TYPE);
-		if (!entity) throw Kompas3DException(std::string("Не могу создать объект ") + typeid(T).name());
-		return T(entity, NULL, std::forward<Args>(args)...);
+		std::unique_ptr<Node::NodeImpl> node = std::move(part->CreateImpl(T::TYPE));
+		if (!node) throw Kompas3DException(std::string("Не могу создать объект ") + typeid(T).name());
+		return T(std::move(node), std::forward<Args>(args)...);
 	}
-	std::string Name();
-	Part& Remove(Node node);
-	Plane GetPlaneXOY();
-	Plane GetPlaneXOZ();
-	Plane GetPlaneYOZ();
-	Axis GetAxisOX();
-	Axis GetAxisOY();
-	Axis GetAxisOZ();
-	std::vector<Variable> GetVariables(bool isExternal = false);
-	operator bool() const { return pPart; }
+	std::string Name() { return part->Name(); }
+	//Part& Remove(Node node);
+	Plane GetPlaneXOY() { return part->GetPlane(1); }
+	Plane GetPlaneXOZ() { return part->GetPlane(2); }
+	Plane GetPlaneYOZ() { return part->GetPlane(3); }
+	//Axis GetAxisOX();
+	//Axis GetAxisOY();
+	//Axis GetAxisOZ();
+	//std::vector<Variable> GetVariables(bool isExternal = false);
+	//operator bool() const { return pPart; }
 };
 
 #endif

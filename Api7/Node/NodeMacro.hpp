@@ -1,3 +1,17 @@
+#pragma once
+
+#include "../../Include/Node/NodeMacro.h"
+#include "../Node.hpp"
+
+class NodeMacroApi7 : public NodeApi7, public NodeMacro::NodeMacroImpl {
+public :
+	NodeMacroApi7(K5::ksEntityPtr e, IDispatchPtr d) : NodeApi7(e, d) {}
+	void Show(bool show) {
+		K5::ksMacro3DDefinitionPtr d = def;
+		d->StaffVisible = show;
+	}
+};
+
 /*
  * #include "NodeMacro.h"
  * #include "../Kompas3D.h"
@@ -102,6 +116,6 @@
  *     }
  *     return false;
  * }
- * 
- * int NodeMacro::TYPE = KConst3D::o3d_MacroObject;
  */
+ 
+//int NodeMacro::TYPE = KConst3D::o3d_MacroObject;

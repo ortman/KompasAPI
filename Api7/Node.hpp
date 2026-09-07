@@ -1,4 +1,8 @@
-//#include "Node.h"
+#ifndef _NODE_API7_HPP_
+#define _NODE_API7_HPP_
+
+#include "../Include/Node.h"
+#include "../Include/Kompas3D.h"
 
 /*
  * Node::Node(IUnknown* pE, IDispatch* pD) : pEntity(pE), pDefinition(pD) {
@@ -24,26 +28,6 @@
  * 	return entity ? entity->type : 0;
  * }
  * 
- * std::string Node::GetName() const {
- * 	K5::ksEntityPtr entity = pEntity;
- * 	if (!entity) return std::string();
- * 	return Cp1251ToUtf8(entity->name);
- * }
- * 
- * Node& Node::SetName(const std::string& name) {
- * 	K5::ksEntityPtr entity = pEntity;
- * 	if (entity) {
- * 		entity->name = Utf8ToCp1251(name).c_str();
- * 	}
- * 	return *this;
- * }
- * 
- * Node& Node::Update() {
- * 	K5::ksEntityPtr entity = pEntity;
- * 	if (entity) entity->Update();
- * 	return *this;
- * }
- * 
  * Node& Node::operator=(const Node& other) {
  * 	if (this == &other) return *this;
  * 	if (pDefinition) pDefinition->Release();
@@ -62,5 +46,34 @@
  * 	return *this;
  * }
  * 
- * int Node::TYPE = KConst3D::o3d_unknown;
+ * 
  */
+int Node::TYPE = KConst3D::o3d_unknown;
+
+class NodeApi7 : virtual public Node::NodeImpl {
+public:
+	K5::ksEntityPtr entity;
+	IDispatchPtr def;
+	NodeApi7(K5::ksEntityPtr e, IDispatchPtr definition) : entity(e), def(definition) {
+		if (entity && !def) {
+			def = entity->GetDefinition();
+		}
+	}
+	int GetType() const override {
+		return entity->type;
+	}
+	std::string GetName() const override {
+		return Kompas3D::Cp1251ToUtf8(entity->name);
+	}
+	void SetName(const std::string& name) override {
+		entity->name = Kompas3D::Utf8ToCp1251(name).c_str();
+	}
+	void Create() override {
+		entity->Create();
+	}
+	void Update() override {
+		entity->Update();
+	}
+};
+
+#endif

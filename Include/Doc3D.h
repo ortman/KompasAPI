@@ -6,9 +6,9 @@
 #include <memory>
 
 #include "Node.h"
-//#include "Part.h"
+#include "Part.h"
 #include "KompasEvent.h"
-//#include "Node/NodeMacro.h"
+#include "Node/NodeMacro.h"
 //#include "Panel.h"
 //#include "Process3D.h"
 
@@ -121,29 +121,30 @@ private:
 	//KProcess3D* proc3D = nullptr;
 
 public:
-	class K3D_Doc3D {
+	class Doc3DImpl {
 	public:
 		virtual std::string GetPath() { return std::string(); }
 		virtual bool SaveAs(const ExportParams& params, const std::string& path) { return false; }
-		virtual ~K3D_Doc3D() = default;
+		virtual Part GetTopPart() { return Part(); }
+		virtual ~Doc3DImpl() = default;
 	};
 
-	std::unique_ptr<K3D_Doc3D> doc;
+	std::unique_ptr<Doc3DImpl> doc;
 	KompasEvent<void()> WhenBeginCloseDocument;
 	KompasEvent<void()> WhenCloseDocument;
 	KompasEvent<void()> WhenBeginSaveDocument;
 	KompasEvent<void()> WhenSaveDocument;
 	KompasEvent<void()> WhenActiveDocument;
 	
-	Doc3D() {} // No document
-	Doc3D(std::unique_ptr<K3D_Doc3D> p) : doc(std::move(p)) {}
+	Doc3D() : doc(nullptr) {} // No document
+	Doc3D(std::unique_ptr<Doc3DImpl> p) : doc(std::move(p)) {}
 //	Doc3D(const Doc3D& other) = delete; // Конструктор копирования
 //  Doc3D& operator=(const Doc3D& other) = delete; // Оператор копирующего присваивания
 //	Doc3D(Doc3D&& doc) noexcept; // Конструктор перемещения
 //	Doc3D& operator=(Doc3D&& doc) noexcept; // Оператор перемещающего присваивания
 //	~Doc3D();
 	std::string GetPath() { return doc->GetPath(); }
-//	Part GetTopPart();
+	Part GetTopPart() { return doc->GetTopPart(); }
 //	NodeMacro GetEditMacroObject();
 	bool SaveAs(const ExportParams& params, const std::string& path) { return doc->SaveAs(params, path); }
 //	Doc3D& Reopen();
