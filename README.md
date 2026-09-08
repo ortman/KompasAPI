@@ -2,9 +2,9 @@
 
 Обёртка над API КОМПАС-3D для C++. Прикладной код работает с обычными C++ классами
 (`Doc3D`, `Part`, `Sketch`, `Panel`…) и не видит ни COM, ни `IUnknown`, ни `_variant_t`,
-ни кодировки cp1251.
+ни кодировки cp1251, ни сторонних библиотек.
 
-Пакет U++ (`KompasAPI.upp`), подключается как зависимость: `uses Kompas3DPrint/KompasAPI;`
+Проект оформлен как CMake или U++ пакет (`KompasAPI.upp`), подключается как зависимость: `uses Kompas3DPrint/KompasAPI;`
 
 ## Зачем
 
@@ -252,6 +252,35 @@ try {
 Библиотека собирается как DLL и подключается к КОМПАСу через `LibInterfaceNotifyEntry`
 (КОМПАС передаёт указатель на приложение) и `LIBRARYENTRY` (вызов команды меню).
 Альтернативно — внешнее подключение к запущенному КОМПАСу через `Kompas3D::ComConnect()`.
+
+### Без U++ (CMake)
+
+Зависимостей от U++ у библиотеки нет, поэтому её можно собрать и в любой другой IDE:
+
+```cmake
+add_subdirectory(KompasAPI)
+target_link_libraries(МоеПриложение PRIVATE KompasAPI::KompasAPI)
+```
+```cpp
+#include <Kompas3D.h>
+```
+
+```
+cmake -B build -DKOMPAS_SDK_DIR=C:/KSDK24
+```
+
+| Переменная | Значение |
+|---|---|
+| `KOMPAS_SDK_DIR` | каталог SDK, по умолчанию `C:/KSDK24` |
+| `KOMPASAPI_BACKEND` | `Api7` — реализация через COM (Windows + MSVC, только x64); `None` — только заголовки `Include/`, для своего бэкенда и тестов на подставных реализациях |
+| `KOMPASAPI_INSTALL` | добавить правила установки, по умолчанию `OFF` |
+
+Бэкенд `Api7` требует именно MSVC: `Api7/ComKompas.cpp` импортирует интерфейсы через
+`#import "*.tlb"`. Для других компиляторов нужны заранее сгенерированные `*.tlh`/`*.tli`
+в `Api7/tlh` — их подхватит `Api7/ComKompas.h`.
+
+`Kompas3D::RunCommand` библиотека не реализует: это диспетчер команд меню, его
+определяет приложение.
 
 ## Как добавить новый тип узла
 

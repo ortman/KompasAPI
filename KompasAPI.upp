@@ -14,6 +14,8 @@ options(WIN32) -DKAPI7;
 
 options(UNIX) -DKSAPI;
 
+options(MSC) -wd4250;
+
 include
 	C:/KSDK24/Include,
 	C:/KSDK24,
@@ -21,6 +23,7 @@ include
 
 file
 	README.md,
+	CMakeLists.txt,
 	Include readonly separator,
 	Include/Kompas3D.h,
 	Include/Doc3D.h,

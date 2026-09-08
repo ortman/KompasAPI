@@ -117,9 +117,14 @@ elseif(KOMPASAPI_BACKEND STREQUAL "Api7")
     if(MSVC)
         # Исходники в UTF-8 БЕЗ BOM. Без /utf-8 MSVC читает их как ANSI и русские
         # строки (сообщения об ошибках, имена объектов) превращаются в мусор.
+        # PUBLIC, потому что публичные заголовки с русскими литералами компилируются
+        # в составе кода пользователя — его исходники тоже должны быть в UTF-8.
         target_compile_options(KompasAPI PUBLIC /utf-8)
-        # #import разворачивает .tlb КОМПАСа в очень крупные объектные файлы
-        target_compile_options(KompasAPI PRIVATE /bigobj)
+        target_compile_options(KompasAPI PRIVATE
+            /bigobj      # #import разворачивает .tlb КОМПАСа в очень крупные объектники
+            /wd4250      # "наследуется через превосходство" — так и задуман pimpl
+            /wd4278      # #import: имена из .tlb, совпадающие с макросами Windows
+            /wd4828)     # LIBTOOL.H самого SDK лежит в cp1251 и ругается под /utf-8
     endif()
 
 else()
