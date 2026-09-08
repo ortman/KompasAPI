@@ -19,6 +19,7 @@ public:
 	class Kompas3DImpl {
 	public:
 		virtual Doc3D GetActiveDocument3D() { return Doc3D(); }
+		virtual Doc3D Open3D(std::string path, bool visible) { return Doc3D(); }
 		virtual void Message(const std::string& txt) {}
 		virtual void Error(const std::string& txt) {}
 		virtual std::string SystemPath(long type) { return std::string(); }
@@ -26,12 +27,13 @@ public:
 		virtual ~Kompas3DImpl() = default;
 	};
 
+	inline static KompasEvent<void()> WhenConnect;
 	inline static KompasEvent<bool(Doc3D& doc, int docType)>  WhenCreateDocument;
 	inline static KompasEvent<bool(Doc3D& doc, int docType)>  WhenOpenDocument;
 	
 	Kompas3D() = delete;
 	static Doc3D GetActiveDocument3D() { return kompas->GetActiveDocument3D(); }
-	static Doc3D Open3D(std::string path, bool visible = true);
+	static Doc3D Open3D(std::string path, bool visible = true) { return kompas->Open3D(path, visible); }
 	static void Message(const std::string& txt) { kompas->Message(txt); }
 	static void Error(const std::string& txt) { kompas->Error(txt); }
 	static std::string SystemPath(long type) { return kompas->SystemPath(type); }

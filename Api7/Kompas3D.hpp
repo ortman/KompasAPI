@@ -41,58 +41,6 @@ public:
 	}
 };
 
-//bool Kompas3D::Connect(bool open, bool visible) {
-//	if (pKompas && pKompas7) return true;
-//	HRESULT hr;
-//	if (!comInit) {
-//		hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
-//		comInit = SUCCEEDED(hr);
-//	}
-//	if (!comInit) return false;
-//	K5::KompasObjectPtr kompas = nullptr;
-//	hr = kompas.GetActiveObject(L"KOMPAS.Application.5");
-//	if (FAILED(hr)) {
-//		if (open) {
-//			hr = kompas.CreateInstance(L"KOMPAS.Application.5");
-//		} else {
-//			return false;
-//		}
-//	}
-//	if (SUCCEEDED(hr)) {
-//		kompas->Visible = visible;
-//		pKompas = kompas.Detach();
-//		K7::IApplicationPtr kompas7 = nullptr;
-//		hr = kompas7.GetActiveObject(L"KOMPAS.Application.7");
-//		if (SUCCEEDED(hr)) {
-//			pKompas7 = kompas7.Detach();
-//			kompasNotify.Subscribe(pKompas);
-//			return true;
-//		} else {
-//			pKompas->Release();
-//		}
-//	}
-//	return false;
-//}
-//
-//void Kompas3D::Disconnect() {
-//	if (pKompas) {
-//		kompasNotify.Unsubscribe(pKompas);
-//		pKompas->Release();
-//	}
-//	if (pKompas7) pKompas7->Release();
-//	if (comInit) CoUninitialize();
-//}
-
-//Doc3D Kompas3D::Open3D(std::string path, bool visible) {
-//	if (!Connect()) throw Kompas3DException("Нет подключения к Компас3D");
-//	K5::KompasObjectPtr kompas(pKompas);
-//	K5::ksDocument3DPtr doc = kompas->Document3D();
-//	if (!doc->Open(Node::Utf8ToCp1251(path).c_str(), !visible)) {
-//		throw Kompas3DException("Не могу открыть документ: " + path);
-//	}
-//	return Doc3D(doc.GetInterfacePtr());
-//}
-//
 //IUnknown* Kompas3D::CreatePropertyManager() {
 //	if (!Connect()) throw Kompas3DException("Kompas not connected");
 //	K7::IApplicationPtr kompas7(pKompas7);
@@ -102,7 +50,7 @@ public:
 //	manager.AddRef();
 //	return manager.GetInterfacePtr();
 //}
-//
+
 //IUnknown* Kompas3D::CreateProcessParam() {
 //	if (!Connect()) throw Kompas3DException("Kompas not connected");
 //	K7::IApplicationPtr kompas7(pKompas7);
@@ -122,6 +70,7 @@ public:
 	Kompas3DApi7(IDispatch *k5) {
 		ComEvent::kompas5 = k5;
 		ComEvent::kompas5.AddRef();
+		ComEvent::kompas7 = ComEvent::kompas5->ksGetApplication7();
 	}
 	
 	Kompas3DApi7(bool open, bool visible) {
@@ -144,7 +93,7 @@ public:
 			ComEvent::kompas5->Visible = visible;
 			hr = ComEvent::kompas7.GetActiveObject(L"KOMPAS.Application.7");
 			if (SUCCEEDED(hr)) {
-				//kompasNotify.Subscribe(pKompas);
+				kompasNotify.Subscribe(ComEvent::kompas5);
 				return;
 			}
 		}
@@ -165,6 +114,17 @@ public:
 		if (ComEvent::kompas5) {
 			K5::ksDocument3DPtr doc = ComEvent::kompas5->ActiveDocument3D();
 			if (doc) return Doc3D(std::make_unique<Doc3DApi7>(doc));
+		}
+		return Doc3D();
+	}
+	
+	Doc3D Open3D(std::string path, bool visible) override {
+		if (ComEvent::kompas5) {
+			K5::ksDocument3DPtr doc = ComEvent::kompas5->Document3D();
+			if (!doc->Open(Kompas3D::Utf8ToCp1251(path).c_str(), !visible)) {
+				throw Kompas3DException("Не могу открыть документ: " + path);
+			}
+			return Doc3D(std::make_unique<Doc3DApi7>(doc));
 		}
 		return Doc3D();
 	}
@@ -195,6 +155,7 @@ DllExport void LIBRARYENTRY(unsigned int comm) {
 
 DllExport int LibInterfaceNotifyEntry(IDispatch *application) {
 	Kompas3D::SetKompas(std::move(std::make_unique<Kompas3DApi7>(application)));
+	Kompas3D::WhenConnect();
 	return 1;
 }
 
@@ -202,7 +163,10 @@ bool Kompas3D::ComConnect(bool open, bool visible) {
 	if (dynamic_cast<Kompas3DApi7*>(kompas.get())) return true;
 	std::unique_ptr<Kompas3DApi7> comKompas = std::make_unique<Kompas3DApi7>(open, visible);
 	bool isConnected = comKompas->IsConnected();
-	if (isConnected) Kompas3D::SetKompas(std::move(comKompas));
+	if (isConnected) {
+		Kompas3D::SetKompas(std::move(comKompas));
+		Kompas3D::WhenConnect();
+	}
 	return isConnected;
 }
 
