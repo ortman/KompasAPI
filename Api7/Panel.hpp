@@ -7,23 +7,38 @@ inline _variant_t ToVariantT(const PropertyVariant& boxVar) {
 	return std::visit([](const auto& arg) -> _variant_t {
 		using T = std::decay_t<decltype(arg)>;
 		if constexpr (std::is_same_v<T, std::string>) {
-			return _variant_t(Kompas3D::Utf8ToCp1251(arg).c_str()); // Создаст VARIANT с типом VT_BSTR
+			return _variant_t(Kompas3D::Utf8ToCp1251(arg).c_str()); // VT_BSTR
+		} else if constexpr (std::is_same_v<T, int>) {
+			return _variant_t((long)arg); // VT_I4; _variant_t(int) создал бы VT_INT
 		} else {
-			return _variant_t(arg); // Для int (VT_I4), double (VT_R8) и т.д.
+			return _variant_t(arg); // VT_R8 для double
 		}
 	}, boxVar);
 }
 
 inline PropertyVariant FromVariantT(const _variant_t& var) {
 	switch (var.vt) {
-		case VT_I4:   return int(var);
-		case VT_R8:   return double(var);
-		case VT_BSTR: return Kompas3D::Cp1251ToUtf8(_bstr_t(var.bstrVal));
-		case VT_I2:   return static_cast<int>(var);
-		case VT_R4:   return static_cast<double>(var);
 		case VT_EMPTY:
-		case VT_NULL: return 0;
-		default: throw Kompas3DException("Unsupported _variant_t type");
+		case VT_NULL:
+			return 0;
+		case VT_I1:  case VT_I2:  case VT_I4:  case VT_INT:
+		case VT_UI1: case VT_UI2: case VT_UI4: case VT_UINT:
+		case VT_BOOL:
+			return (int)(long)var; // ChangeType в VT_I4
+		case VT_R4: case VT_R8: case VT_CY: case VT_DECIMAL: case VT_DATE:
+			return (double)var;    // ChangeType в VT_R8
+		case VT_BSTR:
+			return Kompas3D::Cp1251ToUtf8(_bstr_t(var.bstrVal));
+		default:
+			break;
+	}
+	// Прочие типы пробуем привести к строке
+	try {
+		_variant_t str(var);
+		str.ChangeType(VT_BSTR);
+		return Kompas3D::Cp1251ToUtf8(_bstr_t(str.bstrVal));
+	} catch (const _com_error&) {
+		throw Kompas3DException("Unsupported _variant_t type " + std::to_string((int)var.vt));
 	}
 }
 
