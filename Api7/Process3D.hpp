@@ -99,6 +99,7 @@ private:
 	K5::ksDocument3DPtr doc;
 	K7::IProcess3DPtr proc3D;
 	K7::IProcessParamPtr procParam;
+	KProcess3D* owner = nullptr;
 	Process3DNotifyLoc* procEvent = nullptr;
 	PropertyManagerNotifyLoc* paramEvent = nullptr;
 
@@ -126,13 +127,12 @@ public:
 		}
 	}
 
-	void SetOwner(KProcess3D* owner) override {
-		procEvent = new Process3DNotifyLoc(owner);
-		if (FAILED(procEvent->Subscribe(proc3D))) throw Kompas3DException("Не могу подписать события на процесс");
+	void SetOwner(KProcess3D* o) override {
+		owner = o;
 	}
 
 	// Panel::PanelImpl
-	bool Create(Panel* owner, const std::string& caption) override {
+	bool Create(Panel* panelOwner, const std::string& caption) override {
 		if (!ComEvent::kompas7) return false;
 		Process()->Dynamic = true;
 		procParam = ComEvent::kompas7->CreateProcessParam();
@@ -140,7 +140,7 @@ public:
 		procParam->AutoReduce = false;
 		procParam->SpecToolbar = KConst::pnEnterEscHelp;
 		if (!caption.empty()) procParam->Caption = Kompas3D::Utf8ToCp1251(caption).c_str();
-		paramEvent = new PropertyManagerNotifyLoc(owner);
+		paramEvent = new PropertyManagerNotifyLoc(panelOwner);
 		paramEvent->Subscribe(procParam);
 		return true;
 	}
@@ -153,9 +153,12 @@ public:
 		return std::make_unique<TabApi7>(tab);
 	}
 
-	// ProcessParam назначается процессу только после того, как в нём созданы все вкладки
+	// ProcessParam назначается процессу только после того, как в нём созданы все вкладки,
+	// и лишь затем подписываются события процесса — такой порядок в примерах SDK
 	void Finish() override {
 		if (procParam) Process()->ProcessParam = procParam;
+		procEvent = new Process3DNotifyLoc(owner);
+		if (FAILED(procEvent->Subscribe(proc3D))) throw Kompas3DException("Не могу подписать события на процесс");
 	}
 
 	void Update() override {

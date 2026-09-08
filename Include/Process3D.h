@@ -164,6 +164,7 @@ public:
 
 inline void KProcess3D::Init(std::unique_ptr<Process3DImpl> impl) {
 	if (!impl) throw Kompas3DException("Не могу создать процесс");
+	if (tabs.empty()) throw Kompas3DException("У процесса нет ни одной вкладки панели свойств");
 	impl->SetOwner(this);
 	if (!Build(std::move(impl))) throw Kompas3DException("Не могу создать панель свойств процесса");
 }

@@ -197,20 +197,15 @@ protected:
 inline bool Panel::Build(std::unique_ptr<PanelImpl> impl) {
 	currentPanel = nullptr;
 	if (!impl) return false;
-	try {
-		if (!impl->Create(this, name)) return false;
-		panel = std::move(impl);
-		for (Tab* t : tabs) {
-			std::unique_ptr<TabImpl> tabImpl = panel->AddTab(t->name);
-			if (!tabImpl) continue;
-			t->tab = std::move(tabImpl);
-			for (Property* p : t->props) t->CreateProperty(p);
-		}
-		panel->Finish();
-	} catch (const Kompas3DException&) {
-		panel = nullptr;
-		return false;
+	if (!impl->Create(this, name)) return false;
+	panel = std::move(impl);
+	for (Tab* t : tabs) {
+		std::unique_ptr<TabImpl> tabImpl = panel->AddTab(t->name);
+		if (!tabImpl) throw Kompas3DException("Не могу создать вкладку панели: " + t->name);
+		t->tab = std::move(tabImpl);
+		for (Property* p : t->props) t->CreateProperty(p);
 	}
+	panel->Finish();
 	return true;
 }
 
