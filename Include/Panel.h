@@ -27,7 +27,6 @@ public:
 		virtual void SetValue(const PropertyVariant& val) = 0;
 		virtual void Add(const PropertyVariant& val) {}
 		virtual void ClearList() {}
-		virtual int Find(const PropertyVariant& val) { return -1; }
 		virtual ~PropertyImpl() = default;
 	};
 
@@ -170,11 +169,16 @@ public:
 };
 
 class PropertyList : public Panel::Property {
+private:
+	std::vector<PropertyVariant> items; // значения в порядке добавления
+
 public:
 	PropertyList(const char* name) : Property(name, 7, "") {}
 	PropertyList& Add(PropertyVariant val);
 	PropertyList& Clear();
-	int Find(PropertyVariant val);
+	int Find(PropertyVariant val) const;
+	int GetIndex() const; // Индекс текущего значения, -1 если не выбрано
+	int GetCount() const { return (int)items.size(); }
 	operator PropertyVariant() const;
 	PropertyVariant operator=(PropertyVariant);
 };
@@ -295,18 +299,26 @@ inline double PropertyD::operator=(double val) {
 }
 
 inline PropertyList& PropertyList::Add(PropertyVariant val) {
+	items.push_back(val);
 	if (prop) prop->Add(val);
 	return *this;
 }
 
 inline PropertyList& PropertyList::Clear() {
+	items.clear();
 	if (prop) prop->ClearList();
 	return *this;
 }
 
-inline int PropertyList::Find(PropertyVariant val) {
-	return prop ? prop->Find(val) : -1;
+// Ищем по своему списку: индекс нужен в порядке добавления, а не в порядке показа
+inline int PropertyList::Find(PropertyVariant val) const {
+	for (size_t i = 0; i < items.size(); ++i) {
+		if (items[i] == val) return (int)i;
+	}
+	return -1;
 }
+
+inline int PropertyList::GetIndex() const { return Find(*this); }
 
 inline PropertyList::operator PropertyVariant() const {
 	return prop ? prop->GetValue() : defaultVal;

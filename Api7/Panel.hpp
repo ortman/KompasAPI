@@ -53,6 +53,9 @@ public:
 		ctrl->Name = Kompas3D::Utf8ToCp1251(name).c_str();
 		if (val.has_value()) ctrl->Value = ToVariantT(val.value());
 		ctrl->Id = id;
+		// Find и SetCurrentByIndex работают только на несортированном списке,
+		// и порядок в списке должен совпадать с порядком добавления
+		if (K7::IPropertyListPtr list = ctrl) list->Sort = false;
 	}
 	void SetName(const std::string& name) override {
 		ctrl->Name = Kompas3D::Utf8ToCp1251(name).c_str();
@@ -70,10 +73,6 @@ public:
 	void ClearList() override {
 		K7::IPropertyListPtr list = ctrl;
 		if (list) list->ClearList();
-	}
-	int Find(const PropertyVariant& val) override {
-		K7::IPropertyListPtr list = ctrl;
-		return list ? list->Find(ToVariantT(val)) : -1;
 	}
 };
 
