@@ -26,7 +26,7 @@ public:
 	static inline int TYPE = 56; /* o3d_cylindricSpiral */
 	// Create() вызывается явно, после настройки параметров
 	CylindricSpiral(std::unique_ptr<NodeImpl> p) : Node(std::move(p)) {}
-	//CylindricSpiral(const Node& node) : Node(node) {}
+	CylindricSpiral(Node&& node) : Node(std::move(node)) {}
 	CylindricSpiral& SetDiam(double d) {
 		CylindricSpiralImpl* spiral = dynamic_cast<CylindricSpiralImpl*>(node.get());
 		if (spiral) spiral->SetDiam(d);

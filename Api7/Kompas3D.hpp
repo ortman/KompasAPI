@@ -121,6 +121,7 @@ public:
 	Doc3D Open3D(std::string path, bool visible) override {
 		if (ComEvent::kompas5) {
 			K5::ksDocument3DPtr doc = ComEvent::kompas5->Document3D();
+			if (!doc) throw Kompas3DException("Не могу создать документ для: " + path);
 			if (!doc->Open(Kompas3D::Utf8ToCp1251(path).c_str(), !visible)) {
 				throw Kompas3DException("Не могу открыть документ: " + path);
 			}

@@ -5,6 +5,7 @@
 #include "../Include/Kompas3D.h"
 
 #include "Part.hpp"
+#include "Process3D.hpp"
 #include "Node/NodeMacro.hpp"
 
 #include <filesystem>
@@ -180,6 +181,14 @@ public:
 		K5::ksEntityPtr obj2 = n2->entity;
 		if (!obj1 || !obj2) return false;
 		return doc->AddMateConstraint(type, obj1, obj2, direction, fixed, value);
+	}
+	
+	std::unique_ptr<KProcess3D::Process3DImpl> CreateProcessImpl() override {
+		K7::IKompasDocument3D1Ptr doc1 = ToApi7<K7::IKompasDocument3D1Ptr>(doc);
+		if (!doc1) throw Kompas3DException("У процесса нет документа");
+		K7::IProcess3DPtr proc = doc1->GetLibProcess(KConst::ksProcess3DPlacementAndEntity);
+		if (!proc) throw Kompas3DException("Не могу создать процесс");
+		return std::make_unique<Process3DApi7>(doc, proc);
 	}
 	
 	Part AddPart(const Part& part, const std::optional<std::string>& filePath) override {

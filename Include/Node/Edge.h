@@ -15,7 +15,7 @@ public:
 
 	static inline int TYPE = 7; /* o3d_edge */
 	Edge(std::unique_ptr<NodeImpl> p) : Node(std::move(p)) {}
-	//Edge(const Node& node) : Node(node) {}
+	Edge(Node&& node) : Node(std::move(node)) {}
 	Face LeftFace() const {
 		EdgeImpl* edge = dynamic_cast<EdgeImpl*>(node.get());
 		return Face(edge ? edge->GetAdjacentFace(true) : nullptr);

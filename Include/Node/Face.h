@@ -14,7 +14,8 @@ public:
 public:
 	static inline int TYPE = 6; /* o3d_face */
 	Face(std::unique_ptr<NodeImpl> p) : Node(std::move(p)) {}
-	//Face(const Node& node) : Node(node) {}
+	// Перехват уже существующего узла
+	Face(Node&& node) : Node(std::move(node)) {}
 	bool IsPlanar() {
 		FaceImpl* face = dynamic_cast<FaceImpl*>(node.get());
 		return face ? face->IsPlanar() : false;

@@ -60,6 +60,8 @@ public:
 	};
 	static inline int TYPE = 5; /* o3d_sketch */
 	Sketch() : Node(nullptr) {}
+	// Перехват уже существующего узла
+	Sketch(Node&& node) : Node(std::move(node)) {}
 	Sketch(std::unique_ptr<NodeImpl> p) : Node(std::move(p)) {
 		node->Create();
 	}

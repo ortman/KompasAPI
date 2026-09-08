@@ -28,7 +28,7 @@ public:
 		if (macro) macro->Show(show);
 		node->Create();
 	}
-	//NodeMacro(const Node& node) : Node(node.pEntity, node.pDefinition) {}
+	NodeMacro(Node&& node) : Node(std::move(node)) {}
 	NodeMacro& Add(const Node& n) {
 		NodeMacroImpl* macro = dynamic_cast<NodeMacroImpl*>(node.get());
 		if (macro) macro->Add(n);

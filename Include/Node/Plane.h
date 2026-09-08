@@ -28,7 +28,7 @@ public:
 	Plane(std::unique_ptr<NodeImpl> p) : Node(std::move(p)) {
 		node->Create();
 	}
-	//Plane(const Node& node) : Node(node) {}
+	Plane(Node&& node) : Node(std::move(node)) {}
 	Vertex::Point3D GetVector(AxisType type) {
 		PlaneImpl* plane = dynamic_cast<PlaneImpl*>(node.get());
 		return plane ? plane->GetVector(type) : Vertex::Point3D{0., 0., 0.};
@@ -74,7 +74,7 @@ public:
 		}
 		node->Create();
 	}
-	//ParallelPlane(const Node& node) : Plane(node) {}
+	ParallelPlane(Node&& node) : Plane(std::move(node)) {}
 	ParallelPlane& SetPlane(const Face& planarFace) {
 		ParallelPlaneImpl* plane = dynamic_cast<ParallelPlaneImpl*>(node.get());
 		if (plane) plane->SetPlane(planarFace);
@@ -106,7 +106,7 @@ public:
 		}
 		node->Create();
 	}
-	//EdgePointPlane(const Node& node) : Plane(node) {}
+	EdgePointPlane(Node&& node) : Plane(std::move(node)) {}
 	EdgePointPlane& SetEdge(const Axis& axis) {
 		EdgePointPlaneImpl* plane = dynamic_cast<EdgePointPlaneImpl*>(node.get());
 		if (plane) plane->SetEdge(axis);

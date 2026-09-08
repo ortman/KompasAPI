@@ -22,6 +22,7 @@ public:
 		virtual Plane GetPlane(int type) = 0;
 		virtual Axis GetAxis(int type) = 0;
 		virtual std::vector<Node> GetNodes() = 0;
+		virtual std::vector<Variable> GetVariables(bool isExternal) = 0;
 		virtual void Remove(const Node& node) = 0;
 		virtual ~PartImpl() = default;
 	};
@@ -60,7 +61,7 @@ public:
 	Axis GetAxisOX() { return part->GetAxis(71); }
 	Axis GetAxisOY() { return part->GetAxis(72); }
 	Axis GetAxisOZ() { return part->GetAxis(73); }
-	//std::vector<Variable> GetVariables(bool isExternal = false);
+	std::vector<Variable> GetVariables(bool isExternal = false) { return part->GetVariables(isExternal); }
 	operator bool() const { return (bool)part; }
 };
 

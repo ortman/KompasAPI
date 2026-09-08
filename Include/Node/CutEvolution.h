@@ -33,7 +33,7 @@ public:
 		}
 		node->Create();
 	}
-	//CutEvolution(const Node& node) : Node(node) {}
+	CutEvolution(Node&& node) : Node(std::move(node)) {}
 };
 
 #endif

@@ -9,8 +9,7 @@
 #include "Part.h"
 #include "KompasEvent.h"
 #include "Node/NodeMacro.h"
-//#include "Panel.h"
-//#include "Process3D.h"
+#include "Process3D.h"
 
 #define SETTINGS_LINEAR_MAX 1.0
 #define SETTINGS_LINEAR_MIN 0.001
@@ -18,33 +17,6 @@
 #define SETTINGS_ANGLE_MIN  0.1
 #define SETTINGS_RIDGE_MIN  0.01
 #define SETTINGS_RIDGE_MAX  100.0
-
-enum MateType : int {
-	MateCoincidence   = 0,  // совпадение объектов
-	MateParallel      = 1,  // параллельность
-	MatePerpendicular = 2,  // перпендикулярность
-	MateTangency      = 3,  // касательность
-	MateConcentric    = 4,  // концентричность
-	MateDistance      = 5,  // постоянное расстояние между объектами
-	MateAngle         = 6,  // постоянный угол между объектами
-	MateInPlace       = 7,  // создание компонента "на месте"
-	MateTransmission  = 9,  // Механическая передача
-	MateCamGear       = 10, // Кулачковый механизм. Кулачек-толкатель
-	MateSymmetric     = 11, // Симметрия
-	MateDependent     = 14  // Зависимое положение
-};
-
-enum MateDir : int {
-	MateDirUndefined  = 0,  // направление не учитывается
-	MateDirSame       = 1,  // объекты однонаправленные
-	MateDirOpposite   = -1  // объекты разнонаправленные
-};
-
-enum MateFixed : int {
-	MateFixedNone     = 0,  // детали не фиксируются
-	MateFixedFirst    = 1,  // фиксируется первая деталь
-	MateFixedSecond   = 2   // фиксируется вторая деталь
-};
 
 class DocumentFileNotifyLoc;
 class Doc3D {
@@ -145,7 +117,7 @@ public:
 private:
 	//IUnknown* pDoc;
 	//DocumentFileNotifyLoc *comEvent = nullptr;
-	//KProcess3D* proc3D = nullptr;
+	std::unique_ptr<KProcess3D> proc3D;
 
 public:
 	class Doc3DImpl {
@@ -163,6 +135,8 @@ public:
 		virtual bool AddMateConstraint(MateType type, const Node& object1, const Node& object2,
 		                               MateDir direction, MateFixed fixed, double value) { return false; }
 		virtual Part AddPart(const Part& part, const std::optional<std::string>& filePath) { return Part(); }
+		// Имя не CreateProcess: так называется макрос Win32
+		virtual std::unique_ptr<KProcess3D::Process3DImpl> CreateProcessImpl() { return nullptr; }
 		virtual ~Doc3DImpl() = default;
 	};
 
@@ -194,15 +168,16 @@ public:
 	Part AddPart(const Part& part, const std::optional<std::string>& filePath = std::nullopt) {
 		return doc->AddPart(part, filePath);
 	}
-//	template <typename T>
-//	T& CreatePorcess() {
-//		if (proc3D) delete proc3D;
-//		T* proc = new T();
-//		proc->Init(this);
-//		proc3D = proc;
-//		return *proc;
-//	}
-//	friend class KProcess3D;
+	template <typename T>
+	T& CreatePorcess() {
+		static_assert(std::is_base_of<KProcess3D, T>::value, "T must be derived from KProcess3D");
+		std::unique_ptr<T> proc = std::make_unique<T>();
+		T& res = *proc;
+		proc3D = std::move(proc);
+		res.Init(doc->CreateProcessImpl());
+		return res;
+	}
+	friend class KProcess3D;
 };
 
 #endif

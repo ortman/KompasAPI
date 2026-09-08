@@ -84,6 +84,25 @@ public:
 		}
 		return nodes;
 	}
+	std::vector<Part::Variable> GetVariables(bool isExternal) {
+		std::vector<Part::Variable> variables;
+		if (!part) return variables;
+		K5::ksVariableCollectionPtr vs = part->VariableCollection();
+		if (!vs) return variables;
+		int cnt = vs->GetCount();
+		for (int i = 0; i < cnt; ++i) {
+			K5::ksVariablePtr v = vs->GetByIndex(i);
+			if (!v) continue;
+			if (isExternal && !v->external) continue;
+			variables.push_back({
+				(bool)v->external,
+				v->value,
+				Kompas3D::Cp1251ToUtf8(v->name),
+				Kompas3D::Cp1251ToUtf8(v->note)
+			});
+		}
+		return variables;
+	}
 	void Remove(const Node& n) {
 		NodeApi7* n7 = dynamic_cast<NodeApi7*>(n.node.get());
 		if (n7 && doc) {

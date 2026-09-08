@@ -17,7 +17,8 @@ public:
 
 public:
 	static inline int TYPE = 8; /* o3d_vertex */
-	//Vertex(const Node& node) : Node(node) {}
+	// Перехват уже существующего узла
+	Vertex(Node&& node) : Node(std::move(node)) {}
 	Vertex(std::unique_ptr<NodeImpl> p) : Node(std::move(p)) {}
 	operator Point3D const () {
 		VertexImpl* vertex = dynamic_cast<VertexImpl*>(node.get());

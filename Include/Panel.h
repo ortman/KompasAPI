@@ -45,6 +45,7 @@ public:
 		// owner нужен реализации, чтобы вернуть события панели; Panel не копируется и не перемещается
 		virtual bool Create(Panel* owner, const std::string& caption) = 0;
 		virtual std::unique_ptr<TabImpl> AddTab(const std::string& name) = 0;
+		virtual void Finish() {} // Вызывается после создания всех вкладок
 		virtual void Update() = 0;
 		virtual void Show(bool isShow) = 0;
 		virtual ~PanelImpl() = default;
@@ -205,6 +206,7 @@ inline bool Panel::Build(std::unique_ptr<PanelImpl> impl) {
 			t->tab = std::move(tabImpl);
 			for (Property* p : t->props) t->CreateProperty(p);
 		}
+		panel->Finish();
 	} catch (const Kompas3DException&) {
 		panel = nullptr;
 		return false;

@@ -25,7 +25,7 @@ public:
 		}
 		node->Create();
 	}
-	//CutRotated(const Node& node) : Node(node) {}
+	CutRotated(Node&& node) : Node(std::move(node)) {}
 	CutRotated& SetAngle(double angle) {
 		CutRotatedImpl* rotated = dynamic_cast<CutRotatedImpl*>(node.get());
 		if (rotated) rotated->SetAngle(angle);

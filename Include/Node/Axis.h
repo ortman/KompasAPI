@@ -15,7 +15,7 @@ public:
 
 	static inline int TYPE = 71; /* o3d_axisOX */
 	Axis(std::unique_ptr<NodeImpl> p) : Node(std::move(p)) {}
-	//Axis(const Node& node) : Node(node) {}
+	Axis(Node&& node) : Node(std::move(node)) {}
 	Vertex::Point3D GetFirstPoint() const {
 		AxisImpl* axis = dynamic_cast<AxisImpl*>(node.get());
 		return axis ? axis->GetFirstPoint() : Vertex::Point3D{0., 0., 0.};
@@ -55,7 +55,7 @@ public:
 		}
 		node->Create();
 	}
-	//ConeAxis(const Node& node) : Axis(node) {}
+	ConeAxis(Node&& node) : Axis(std::move(node)) {}
 	ConeAxis& SetFace(const Face& coneFace) {
 		ConeAxisImpl* axis = dynamic_cast<ConeAxisImpl*>(node.get());
 		if (axis) axis->SetFace(coneFace);

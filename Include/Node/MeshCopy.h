@@ -34,7 +34,7 @@ public:
 		}
 		node->Create();
 	}
-	//MeshCopy(const Node& node) : Node(node.pEntity, node.pDefinition) {}
+	MeshCopy(Node&& node) : Node(std::move(node)) {}
 	MeshCopy() : Node(nullptr) {}
 	MeshCopy& SetParam1(int count, double step) {
 		MeshCopyImpl* mesh = dynamic_cast<MeshCopyImpl*>(node.get());
