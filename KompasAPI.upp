@@ -20,6 +20,7 @@ include
 	C:/KSDK24/lib;
 
 file
+	README.md,
 	Include readonly separator,
 	Include/Kompas3D.h,
 	Include/Doc3D.h,
