@@ -19,6 +19,18 @@ public :
 		d->step1 = step;
 		d->factor1 = factor;
 	}
+	// count — копий по окружности (с исходной), step — угол между копиями, градусы
+	NodeParams GetParamMap() override {
+		K5::ksCircularCopyDefinitionPtr d = def;
+		return {{"count", (double)d->count2}, {"step", d->step2}};
+	}
+	void SetParamMap(const NodeParams& params) override {
+		K5::ksCircularCopyDefinitionPtr d = def;
+		for (const auto& [key, value] : params) {
+			if (key == "count") d->count2 = (long)value;
+			else if (key == "step") d->step2 = value;
+		}
+	}
 	void SetAxis(const Axis& axis) override {
 		K5::ksCircularCopyDefinitionPtr d = def;
 		NodeApi7* node = dynamic_cast<NodeApi7*>(axis.node.get());

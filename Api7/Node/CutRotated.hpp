@@ -4,8 +4,10 @@
 #include "../Node.hpp"
 #include "Axis.hpp"
 #include "Sketch.hpp"
+#include "Rotated.hpp"
 
-class CutRotatedApi7 : public NodeApi7, public CutRotated::CutRotatedImpl {
+class CutRotatedApi7 : public NodeApi7, public CutRotated::CutRotatedImpl,
+                       private RotatedApi7<K5::ksCutRotatedDefinitionPtr> {
 public :
 	CutRotatedApi7(K5::ksEntityPtr e, IDispatchPtr d) : NodeApi7(e, d) {}
 	void SetSketch(Sketch& sketch) override {
@@ -24,6 +26,13 @@ public :
 		if (!iRotated) throw Kompas3DException("Не могу получить ICutRotated");
 		iRotated->Axis = ToApi7<K7::IAxis3DPtr>(node->entity);
 	}
+	void SetParams(const RotatedParams& params) override {
+		RotatedApi7::SetParams(def, params);
+		K5::ksCutRotatedDefinitionPtr d = def;
+		d->cut = true;
+	}
+	NodeParams GetParamMap() override { return RotatedApi7::GetParamMap(def); }
+	void SetParamMap(const NodeParams& params) override { RotatedApi7::SetParamMap(def, params); }
 	void SetAngle(double angle) override {
 		K5::ksCutRotatedDefinitionPtr d = def;
 		d->cut = true;

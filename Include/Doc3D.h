@@ -100,6 +100,26 @@ public:
 		Document = 4
 	};
 	
+	// Ориентация для снимка: значения ksViewProjectionType
+	enum View {
+		ViewCurrent = -1,
+		ViewFront = 1,
+		ViewRear = 2,
+		ViewTop = 3,
+		ViewBottom = 4,
+		ViewLeft = 5,
+		ViewRight = 6,
+		ViewIsometric = 7,
+		ViewDimetric = 8
+	};
+
+	struct ImageParams {
+		View view = ViewCurrent;   // ориентация модели перед снимком
+		bool zoomAll = true;       // показать всю модель
+		int dpi = 96;              // разрешение растра
+		bool hideConstruction = true;   // скрыть плоскости, оси и эскизы на время снимка
+	};
+
 	struct ExportParams {
 		Format format;
 		bool objBody;
@@ -123,6 +143,14 @@ public:
 	class Doc3DImpl {
 	public:
 		virtual std::string GetPath() { return std::string(); }
+		virtual bool IsPart() { return true; }
+		virtual bool IsModified() { return false; }
+		virtual std::vector<std::pair<int, std::string>> GetProjections() { return {}; }
+		virtual bool Save() { return false; }
+		virtual bool SaveAsNative(const std::string& path) { return false; }
+		virtual bool Rebuild() { return false; }
+		virtual bool SaveImage(const ImageParams& params, const std::string& path) { return false; }
+		virtual std::vector<Part> GetComponents() { return {}; }
 		virtual bool SaveAs(const ExportParams& params, const std::string& path) { return false; }
 		virtual Part GetTopPart() { return Part(); }
 		virtual std::unique_ptr<Node::NodeImpl> GetEditMacroObject() { return nullptr; }
@@ -151,6 +179,20 @@ public:
 	Doc3D(std::nullptr_t) : doc(nullptr) {} // No document
 	Doc3D(std::unique_ptr<Doc3DImpl> p) : doc(std::move(p)) {}
 	std::string GetPath() { return doc->GetPath(); }
+	bool IsPart() { return doc->IsPart(); }
+	// Есть несохранённые изменения
+	bool IsModified() { return doc->IsModified(); }
+	// Проекции модели: тип (значение View) и имя ("#Спереди") — для видов чертежа
+	std::vector<std::pair<int, std::string>> GetProjections() { return doc->GetProjections(); }
+	// Сохранить в родном формате (.m3d/.a3d) по текущему пути
+	bool Save() { return doc->Save(); }
+	// Сохранить в родном формате под новым именем
+	bool SaveAs(const std::string& path) { return doc->SaveAsNative(path); }
+	bool Rebuild() { return doc->Rebuild(); }
+	// Растровый снимок окна модели в PNG
+	bool SaveImage(const ImageParams& params, const std::string& path) { return doc->SaveImage(params, path); }
+	// Компоненты сборки верхнего уровня (у детали — пусто)
+	std::vector<Part> GetComponents() { return doc->GetComponents(); }
 	Part GetTopPart() { return doc->GetTopPart(); }
 	NodeMacro GetEditMacroObject() { return NodeMacro(doc->GetEditMacroObject()); }
 	bool SaveAs(const ExportParams& params, const std::string& path) { return doc->SaveAs(params, path); }

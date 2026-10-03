@@ -1,12 +1,12 @@
 #pragma once
 
-#include "../../Include/Node/CutExtrusion.h"
+#include "../../Include/Node/BossExtrusion.h"
 #include "Extrusion.hpp"
 
-class CutExtrusionApi7 : public NodeApi7, public CutExtrusion::CutExtrusionImpl,
-                          private ExtrusionApi7<K5::ksCutExtrusionDefinitionPtr> {
+class BossExtrusionApi7 : public NodeApi7, public BossExtrusion::BossExtrusionImpl,
+                          private ExtrusionApi7<K5::ksBossExtrusionDefinitionPtr> {
 public :
-	CutExtrusionApi7(K5::ksEntityPtr e, IDispatchPtr d) : NodeApi7(e, d) {}
+	BossExtrusionApi7(K5::ksEntityPtr e, IDispatchPtr d) : NodeApi7(e, d) {}
 	void SetDepth1(double depth) override { ExtrusionApi7::SetDepth1(def, depth); }
 	void SetDepth2(double depth) override { ExtrusionApi7::SetDepth2(def, depth); }
 	void SetParams(const ExtrusionParams& params) override { ExtrusionApi7::SetParams(def, params); }

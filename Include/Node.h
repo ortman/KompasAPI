@@ -4,6 +4,8 @@
 #include <string>
 #include <exception>
 #include <optional>
+#include <map>
+#include <memory>
 
 class Kompas3DException : public std::exception {
 protected:
@@ -14,6 +16,9 @@ public:
 	const char* what() const noexcept override { return message.c_str(); }
 };
 
+// Числовые параметры операции по именам: depth1, angle1, radius, count…
+using NodeParams = std::map<std::string, double>;
+
 class Node {
 public:
 	class NodeImpl {
@@ -23,6 +28,13 @@ public:
 		virtual void SetName(const std::string& name) = 0;
 		virtual void Create() = 0;
 		virtual void Update() = 0;
+		// Код ошибки построения операции (0 — без ошибок)
+		virtual int GetError() const { return 0; }
+		// Параметры, которые можно прочитать и изменить у готовой операции
+		virtual NodeParams GetParamMap() { return {}; }
+		// Идентичность объекта КОМПАСа: одинакова у двух обёрток одного объекта
+		virtual const void* GetIdentity() const { return nullptr; }
+		virtual void SetParamMap(const NodeParams& params) {}
 		virtual ~NodeImpl() = default;
 	};
 
@@ -41,6 +53,12 @@ public:
 	std::string GetName() const { return node->GetName(); }
 	Node& SetName(const std::string& name) { node->SetName(name); return *this; }
 	Node& Update() { node->Update(); return *this; }
+	int GetError() const { return node->GetError(); }
+	// Параметры операции; после SetParamMap нужен Update() и перестроение модели
+	NodeParams GetParamMap() { return node->GetParamMap(); }
+	// Указатель для сравнения: тот же объект КОМПАСа — тот же указатель (nullptr — неизвестно)
+	const void* GetIdentity() const { return node ? node->GetIdentity() : nullptr; }
+	Node& SetParamMap(const NodeParams& params) { node->SetParamMap(params); return *this; }
 	operator bool() const { return node != nullptr; }
 };
 

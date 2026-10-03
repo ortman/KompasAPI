@@ -2,8 +2,10 @@
 #define _API7_KOMPAS_HPP_
 
 #include "ComKompas.h"
+#include <cctype>
 #include "../Include/Kompas3D.h"
 #include "Doc3D.hpp"
+#include "Drawing.hpp"
 #include "Panel.hpp"
 
 class KompasObjectNotifyLoc : public ComEvent {
@@ -109,6 +111,14 @@ public:
 	}
 	
 	bool IsConnected() { return ComEvent::kompas5 && ComEvent::kompas7; }
+
+	// Отписаться от событий и отпустить КОМПАС: иначе закрытые документы, на которые
+	// остались ссылки процесса, висят в Documents невидимыми до таймаута DCOM
+	void Disconnect() {
+		if (ComEvent::kompas5) kompasNotify.Unsubscribe(ComEvent::kompas5);
+		ComEvent::kompas5 = nullptr;
+		ComEvent::kompas7 = nullptr;
+	}
 	
 	Doc3D GetActiveDocument3D() override {
 		if (ComEvent::kompas5) {
@@ -118,8 +128,30 @@ public:
 		return Doc3D();
 	}
 	
+	// Уже открытый документ с этим путём: активировать его вместо повторного открытия
+	Doc3D ActivateOpened(const std::string& path) {
+		if (!ComEvent::kompas7) return Doc3D();
+		auto normalize = [](std::string p) {
+			for (char& c : p) c = c == (char)92 ? '/' : (char)std::tolower((unsigned char)c);   // 92 — обратная косая
+			return p;
+		};
+		const std::string wanted = normalize(path);
+		K7::IDocumentsPtr docs = ComEvent::kompas7->Documents;
+		long count = docs ? docs->Count : 0;
+		for (long i = 0; i < count; ++i) {
+			K7::IKompasDocumentPtr d = docs->GetItem(_variant_t(i));
+			if (!d) continue;
+			if (normalize(Kompas3D::Cp1251ToUtf8((const char*)d->PathName)) != wanted) continue;
+			d->Active = VARIANT_TRUE;
+			K5::ksDocument3DPtr doc = ComEvent::kompas5->ActiveDocument3D();
+			if (doc) return Doc3D(std::make_unique<Doc3DApi7>(doc));
+		}
+		return Doc3D();
+	}
+	
 	Doc3D Open3D(std::string path, bool visible) override {
 		if (ComEvent::kompas5) {
+			if (Doc3D opened = ActivateOpened(path)) return opened;
 			K5::ksDocument3DPtr doc = ComEvent::kompas5->Document3D();
 			if (!doc) throw Kompas3DException("Не могу создать документ для: " + path);
 			if (!doc->Open(Kompas3D::Utf8ToCp1251(path).c_str(), !visible)) {
@@ -128,6 +160,99 @@ public:
 			return Doc3D(std::make_unique<Doc3DApi7>(doc));
 		}
 		return Doc3D();
+	}
+	
+	// Уже открытый документ с этим путём (без учёта регистра и вида косой черты)
+	K7::IKompasDocumentPtr FindOpened(const std::string& path) {
+		if (!ComEvent::kompas7) return nullptr;
+		auto normalize = [](std::string p) {
+			for (char& c : p) c = c == (char)92 ? '/' : (char)std::tolower((unsigned char)c);
+			return p;
+		};
+		const std::string wanted = normalize(path);
+		K7::IDocumentsPtr docs = ComEvent::kompas7->Documents;
+		long count = docs ? docs->Count : 0;
+		for (long i = 0; i < count; ++i) {
+			K7::IKompasDocumentPtr d = docs->GetItem(_variant_t(i));
+			if (d && normalize(BstrToUtf8(d->PathName)) == wanted) return d;
+		}
+		return nullptr;
+	}
+
+	Drawing NewDrawing(bool visible) override {
+		if (!ComEvent::kompas7) return Drawing();
+		K7::IDocumentsPtr docs = ComEvent::kompas7->Documents;
+		K7::IKompasDocument2DPtr d = docs ? docs->Add(KConst::ksDocumentDrawing, visible ? VARIANT_TRUE : VARIANT_FALSE) : nullptr;
+		if (!d) throw Kompas3DException("Не могу создать чертёж");
+		return Drawing(std::make_unique<DrawingApi7>(d));
+	}
+
+	Drawing GetActiveDrawing() override {
+		if (!ComEvent::kompas7) return Drawing();
+		K7::IKompasDocumentPtr d = ComEvent::kompas7->ActiveDocument;
+		if (!d || d->DocumentType != KConst::ksDocumentDrawing) return Drawing();
+		return Drawing(std::make_unique<DrawingApi7>(K7::IKompasDocument2DPtr(d)));
+	}
+
+	Drawing OpenDrawing(const std::string& path, bool visible) override {
+		if (!ComEvent::kompas7) return Drawing();
+		K7::IKompasDocumentPtr d = FindOpened(path);
+		if (d) {
+			d->Active = VARIANT_TRUE;
+		} else {
+			K7::IDocumentsPtr docs = ComEvent::kompas7->Documents;
+			d = docs ? docs->Open(Utf8ToBstr(path), visible ? VARIANT_TRUE : VARIANT_FALSE, VARIANT_FALSE) : nullptr;
+			if (!d) throw Kompas3DException("Не могу открыть чертёж: " + path);
+		}
+		if (d->DocumentType != KConst::ksDocumentDrawing) throw Kompas3DException("Файл не является чертежом: " + path);
+		return Drawing(std::make_unique<DrawingApi7>(K7::IKompasDocument2DPtr(d)));
+	}
+
+	int CloseAll(bool save) override {
+		if (!ComEvent::kompas7) return 0;
+		K7::IDocumentsPtr docs = ComEvent::kompas7->Documents;
+		int closed = 0;
+		for (long i = docs ? docs->Count - 1 : -1; i >= 0; --i) {
+			K7::IKompasDocumentPtr d = docs->GetItem(_variant_t(i));
+			if (d && d->Close(save ? KConst::kdSaveChanges : KConst::kdDoNotSaveChanges)) ++closed;
+		}
+		return closed;
+	}
+
+	std::vector<std::pair<std::string, int>> ListDocuments() override {
+		std::vector<std::pair<std::string, int>> out;
+		if (!ComEvent::kompas7) return out;
+		K7::IDocumentsPtr docs = ComEvent::kompas7->Documents;
+		for (long i = 0; docs && i < docs->Count; ++i) {
+			K7::IKompasDocumentPtr d = docs->GetItem(_variant_t(i));
+			if (!d) continue;   // Count учитывает и уже закрытые документы — их элементы пусты
+			std::string path = BstrToUtf8(d->PathName);
+			out.emplace_back(path.empty() ? BstrToUtf8(d->Name) : path, (int)d->DocumentType);
+		}
+		return out;
+	}
+
+	int SetHideMessage(int mode) override {
+		if (!ComEvent::kompas7) return 0;
+		int old = (int)ComEvent::kompas7->HideMessage;
+		ComEvent::kompas7->HideMessage = (KConst::ksHideMessageEnum)mode;
+		return old;
+	}
+
+	int ActiveDocumentType() override {
+		if (!ComEvent::kompas7) return 0;
+		K7::IKompasDocumentPtr d = ComEvent::kompas7->ActiveDocument;
+		return d ? (int)d->DocumentType : 0;
+	}
+
+	Doc3D New3D(bool assembly, bool visible) override {
+		if (!ComEvent::kompas5) return Doc3D();
+		K5::ksDocument3DPtr doc = ComEvent::kompas5->Document3D();
+		if (!doc) throw Kompas3DException("Не могу создать документ-модель");
+		if (!doc->Create(!visible, !assembly)) {
+			throw Kompas3DException(assembly ? "Не могу создать сборку" : "Не могу создать деталь");
+		}
+		return Doc3D(std::make_unique<Doc3DApi7>(doc));
 	}
 	
 	void Message(const std::string& txt) override {
@@ -172,6 +297,10 @@ bool Kompas3D::ComConnect(bool open, bool visible) {
 }
 
 void Kompas3D::ComDisconnect() {
+	if (Kompas3DApi7* api = dynamic_cast<Kompas3DApi7*>(kompas.get())) {
+		api->Disconnect();
+		kompas = std::make_unique<Kompas3DImpl>();
+	}
 //	if (pKompas) {
 //		kompasNotify.Unsubscribe(pKompas);
 //		pKompas->Release();

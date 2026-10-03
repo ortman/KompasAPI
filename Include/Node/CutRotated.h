@@ -3,6 +3,7 @@
 
 #include "Sketch.h"
 #include "Axis.h"
+#include "Rotated.h"
 
 class CutRotated : public Node {
 public:
@@ -11,6 +12,7 @@ public:
 		virtual void SetSketch(Sketch& sketch) = 0;
 		virtual void SetAxis(const Axis& axis) = 0;
 		virtual void SetAngle(double angle) = 0;
+		virtual void SetParams(const RotatedParams& params) = 0;
 	};
 
 	static inline int TYPE = 29; /* o3d_cutRotated */
@@ -22,6 +24,18 @@ public:
 			rotated->SetAngle(angle);
 			rotated->SetSketch(sketch);
 			rotated->SetAxis(axis);
+		}
+		node->Create();
+	}
+	// Ось — объект модели или nullptr (осевая линия эскиза)
+	CutRotated(std::unique_ptr<NodeImpl> p, Sketch& sketch, const Axis* axis, const RotatedParams& params, const std::optional<std::string>& name = std::nullopt) : Node(std::move(p)) {
+		sketch.EndEdit();
+		if (name.has_value()) node->SetName(name.value());
+		CutRotatedImpl* rotated = dynamic_cast<CutRotatedImpl*>(node.get());
+		if (rotated) {
+			rotated->SetParams(params);
+			rotated->SetSketch(sketch);
+			if (axis) rotated->SetAxis(*axis);
 		}
 		node->Create();
 	}

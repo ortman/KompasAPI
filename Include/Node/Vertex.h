@@ -3,6 +3,8 @@
 
 #include "../Node.h"
 
+#include <memory>
+
 class Vertex : public Node {
 public:
 	struct Point3D {
@@ -24,6 +26,11 @@ public:
 		VertexImpl* vertex = dynamic_cast<VertexImpl*>(node.get());
 		return vertex ? vertex->ToPoint() : Vertex::Point3D{0, 0, 0};
 	}
+};
+
+// Габарит в координатах модели, мм
+struct Box3D {
+	Vertex::Point3D min, max;
 };
 
 #endif

@@ -59,6 +59,90 @@ public:
 		return Kompas3D::Cp1251ToUtf8(doc->fileName);
 	}
 	
+	bool IsPart() override {
+		return doc->IsDetail();
+	}
+
+	bool IsModified() override {
+		K7::IKompasDocumentPtr d = ToApi7<K7::IKompasDocumentPtr>(doc);
+		return d && d->Changed == VARIANT_TRUE;
+	}
+
+	std::vector<std::pair<int, std::string>> GetProjections() override {
+		std::vector<std::pair<int, std::string>> out;
+		K5::ksViewProjectionCollectionPtr views = doc->GetViewProjectionCollection();
+		int count = views ? views->GetCount() : 0;
+		for (int i = 0; i < count; ++i) {
+			K5::ksViewProjectionPtr view = views->GetByIndex(i);
+			if (!view) continue;
+			_bstr_t name = view->name;
+			out.emplace_back((int)view->GetViewProjectonType(), Kompas3D::Cp1251ToUtf8((const char*)name));
+		}
+		return out;
+	}
+
+	bool Save() override {
+		return doc->Save();
+	}
+
+	bool SaveAsNative(const std::string& path) override {
+		return doc->SaveAs(Kompas3D::Utf8ToCp1251(path).c_str());
+	}
+
+	bool Rebuild() override {
+		return doc->RebuildDocument();
+	}
+	
+	std::vector<Part> GetComponents() override {
+		std::vector<Part> parts;
+		if (!doc || doc->IsDetail()) return parts;
+		for (long i = 0;; ++i) {
+			K5::ksPartPtr p = doc->GetPart(i);
+			if (!p) break;
+			parts.push_back(Part(std::make_unique<PartApi7>(doc, p)));
+		}
+		return parts;
+	}
+
+	bool SaveImage(const Doc3D::ImageParams& params, const std::string& path) override {
+		if (params.view != Doc3D::ViewCurrent) {
+			K5::ksViewProjectionCollectionPtr views = doc->GetViewProjectionCollection();
+			int count = views ? views->GetCount() : 0;
+			for (int i = 0; i < count; ++i) {
+				K5::ksViewProjectionPtr view = views->GetByIndex(i);
+				if (view && view->GetViewProjectonType() == params.view) {
+					view->SetCurrent();
+					break;
+				}
+			}
+		}
+		if (params.zoomAll) doc->ZoomPrevNextOrAll(2 /*ksZoomAll*/);
+		K5::ksRasterFormatParamPtr raster = doc->RasterFormatParam();
+		if (!raster) throw Kompas3DException("Не могу получить параметры растрового формата");
+		raster->Init();
+		raster->format = 3;          // FORMAT_PNG
+		raster->colorBPP = 24;       // BPP_COLOR_24
+		raster->colorType = 3;       // COLOROBJECT
+		raster->greyScale = false;
+		raster->onlyThinLine = false;
+		raster->extResolution = params.dpi;
+		raster->extScale = 1.0;
+		// Вспомогательная геометрия загромождает снимок: прячем и возвращаем как было
+		VARIANT_BOOL planes = doc->hideAllPlanes, axes = doc->hideAllAxis, sketches = doc->hideAllSketches;
+		if (params.hideConstruction) {
+			doc->hideAllPlanes = VARIANT_TRUE;
+			doc->hideAllAxis = VARIANT_TRUE;
+			doc->hideAllSketches = VARIANT_TRUE;
+		}
+		bool ok = doc->SaveAsToRasterFormat(Kompas3D::Utf8ToCp1251(path).c_str(), raster);
+		if (params.hideConstruction) {
+			doc->hideAllPlanes = planes;
+			doc->hideAllAxis = axes;
+			doc->hideAllSketches = sketches;
+		}
+		return ok;
+	}
+
 	bool SaveAs(const Doc3D::ExportParams& params, const std::string& path) override {
 		K5::ksAdditionFormatParamPtr formatParam = doc->AdditionFormatParam();
 		formatParam->Init();
@@ -126,11 +210,13 @@ public:
 		return doc->Open(Kompas3D::Utf8ToCp1251(path).c_str(), invisible);
 	}
 	
+	// ksDocument3D::close не всегда закрывает документ (он остаётся в Documents невидимым) —
+	// закрываем через API7 без сохранения
 	void Close() override {
-		if (doc) {
-			doc->close();
-			doc = nullptr;
-		}
+		if (!doc) return;
+		K7::IKompasDocumentPtr d7 = ToApi7<K7::IKompasDocumentPtr>(doc);
+		if (!d7 || !d7->Close(KConst::kdDoNotSaveChanges)) doc->close();
+		doc = nullptr;
 	}
 	
 	int GetEmbodimentsCount() override {

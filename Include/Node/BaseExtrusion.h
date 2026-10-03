@@ -2,6 +2,7 @@
 #define _ComTest_BaseExtrusion_h_
 
 #include "Sketch.h"
+#include "Extrusion.h"
 
 class BaseExtrusion : public Node {
 public:
@@ -10,6 +11,7 @@ public:
 		virtual void SetDepth1(double depth) = 0;
 		virtual void SetDepth2(double depth) = 0;
 		virtual void SetSketch(Sketch& sketch) = 0;
+		virtual void SetParams(const ExtrusionParams& params) = 0;
 	};
 
 	static inline int TYPE = 24; /* o3d_baseExtrusion */
@@ -24,17 +26,32 @@ public:
 		}
 		node->Create();
 	}
+	BaseExtrusion(std::unique_ptr<NodeImpl> p, Sketch& sketch, const ExtrusionParams& params, const std::optional<std::string>& name = std::nullopt) : Node(std::move(p)) {
+		sketch.EndEdit();
+		if (name.has_value()) node->SetName(name.value());
+		BaseExtrusionImpl* extrusion = dynamic_cast<BaseExtrusionImpl*>(node.get());
+		if (extrusion) {
+			extrusion->SetParams(params);
+			extrusion->SetSketch(sketch);
+		}
+		node->Create();
+	}
+	BaseExtrusion& SetParams(const ExtrusionParams& params) {
+		BaseExtrusionImpl* extrusion = dynamic_cast<BaseExtrusionImpl*>(node.get());
+		if (extrusion) extrusion->SetParams(params);
+		return *this;
+	}
 	BaseExtrusion(Node& node) : Node(std::move(node.node)) {}
 	BaseExtrusion() : Node(nullptr) {}
 	BaseExtrusion(Node&& node) : Node(std::move(node)) {}
 	BaseExtrusion& SetDepth1(double depth) {
 		BaseExtrusionImpl* extrusion = dynamic_cast<BaseExtrusionImpl*>(node.get());
-		if (extrusion) extrusion->SetDepth2(depth);
+		if (extrusion) extrusion->SetDepth1(depth);
 		return *this;
 	}
 	BaseExtrusion& SetDepth2(double depth) {
 		BaseExtrusionImpl* extrusion = dynamic_cast<BaseExtrusionImpl*>(node.get());
-		if (extrusion) extrusion->SetDepth1(depth);
+		if (extrusion) extrusion->SetDepth2(depth);
 		return *this;
 	}
 };

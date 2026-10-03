@@ -3,41 +3,39 @@
 
 #include <unknwn.h>
 #include <memory>
+#include <vector>
 #include "Plane.h"
+#include "Face.h"
+#include "../Graphic2D.h"
+#include "../Annotation2D.h"
 
-enum class LineStyle : int {
-    Main = 1,                           // Основная
-    Thin = 2,                           // Тонкая
-    Axial = 3,                          // Осевая
-    Dashed = 4,                         // Штриховая
-    Break = 5,                          // Для линии обрыва
-    Auxiliary = 6,                      // Вспомогательная
-    Thickened = 7,                      // Утолщенная
-    Dotted2 = 8,                        // Пунктир 2
-    DashedMain = 9,                     // Штриховая осн
-    AxialMain = 10,                     // Осевая осн
-    ThinInHatching = 11,                // Тонкая линия, включаемая в штриховку
-    // Стили ISO (12-25)
-    Iso02_Dashed = 12,                  // ISO 02 штриховая линия
-    Iso03_DashedLongSpace = 13,         // ISO 03 штриховая линия (дл. пробел)
-    Iso04_ChainLongDash = 14,           // ISO 04 штрихпунктирная линия (дл. штрих)
-    Iso05_ChainLongDash2Dot = 15,       // ISO 05 штрихпунктирная линия (дл. штрих 2 пунктира)
-    Iso06_ChainLongDash3Dot = 16,       // ISO 06 штрихпунктирная линия (дл. штрих 3 пунктира)
-    Iso07_Dotted = 17,                  // ISO 07 пунктирная линия
-    Iso08_ChainLongShortDash = 18,      // ISO 08 штрихпунктирная линия (дл. и кор. штрихи)
-    Iso09_ChainLong2ShortDash = 19,     // ISO 09 штрихпунктирная линия (дл. и 2 кор. штриха)
-    Iso10_Chain = 20,                   // ISO 10 штрихпунктирная линия
-    Iso11_Chain2Dash = 21,              // ISO 11 штрихпунктирная линия (2 штриха)
-    Iso12_Chain2Dot = 22,               // ISO 12 штрихпунктирная линия (2 пунктира)
-    Iso13_Chain3Dot = 23,               // ISO 13 штрихпунктирная линия (3 пунктира)
-    Iso14_Chain2Dash2Dot = 24,          // ISO 14 штрихпунктирная линия (2 штриха 2 пунктира)
-    Iso15_Chain2Dash3Dot = 25           // ISO 15 штрихпунктирная линия (2 штриха 3 пунктира)
-};
 
 class Sketch : public Node {
 public:
+	// Система координат эскиза в модели
+	struct Placement {
+		Vertex::Point3D origin, x, y, z;
+	};
+
 	class SketchImpl : virtual public Node::NodeImpl {
 	public:
+		virtual std::optional<Placement> GetPlacement() { return std::nullopt; }
+		// Все объекты эскиза; неподдерживаемые — с Kind::Other
+		virtual std::vector<SketchItem> GetItems() { return {}; }
+		// Удалить все объекты эскиза (эскиз остаётся открытым на редактирование)
+		virtual void DeleteAll() {}
+		// Ограничения и размеры (эскиз открывается на редактирование)
+		virtual long LastObject() { return 0; }
+		virtual bool Parametrize(const std::vector<long>& refs, const Parametrize2D& options) { return false; }
+		virtual bool AddConstraint(Constraint2D type, long a, int pointA, long b, int pointB) { return false; }
+		virtual DimensionInfo AddDimension(const Dimension2D& dimension) { return DimensionInfo(); }
+		virtual ObjectDefinition GetObjectDefinition(long ref) { return ObjectDefinition::Unknown; }
+		virtual std::vector<long> Project(const Node& modelObject) { return {}; }
+		virtual long ProjectOrigin() { return 0; }
+		virtual std::vector<long> ProjectSupport() { return {}; }
+		virtual std::unique_ptr<Node::NodeImpl> GetSupportFace() { return nullptr; }
+		virtual bool DeleteObject(long ref) { return false; }
+		virtual SketchDefinition GetDefinition() { return SketchDefinition::Unknown; }
 		virtual void SetPlane(const Plane& plane) = 0;
 		virtual void SetAngle(double angle) = 0;
 		virtual void SetLocation(double locX, double locY) = 0;
@@ -82,6 +80,90 @@ public:
 		node->Create();
 	}
 	Sketch(Node& node) : Node(std::move(node.node)) {}
+	std::vector<SketchItem> GetItems() {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		return sketch ? sketch->GetItems() : std::vector<SketchItem>();
+	}
+	Sketch& DeleteAll() {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		if (sketch) sketch->DeleteAll();
+		return *this;
+	}
+	// Нарисовать объект, прочитанный GetItems (например, чтобы вернуть прежний профиль)
+	Sketch& Draw(const SketchItem& item) {
+		const std::vector<double>& v = item.v;
+		switch (item.kind) {
+			case SketchItem::Kind::Line: return Line(v[0], v[1], v[2], v[3], item.style);
+			case SketchItem::Kind::Circle: return Circle(v[0], v[1], v[2], item.style);
+			case SketchItem::Kind::Arc: return ArcByPoint(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7] < 0, item.style);
+			case SketchItem::Kind::Point: return Point(v[0], v[1], item.style);
+			case SketchItem::Kind::Ellipse: return Ellipse(v[0], v[1], v[2], v[3], v[4], item.style);
+			case SketchItem::Kind::EllipseArc: return EllipseArc(v[0], v[1], v[2], v[3], v[5], v[6], v[7] < 0, v[4], item.style);
+			case SketchItem::Kind::Rect: return Rect(v[0], v[1], v[2], v[3], v[4], item.style);
+			case SketchItem::Kind::Polygon: return RegularPolygon(v[0], v[1], v[2], (int)v[3], v[4] != 0, v[5], item.style);
+			default: return *this;
+		}
+	}
+	// Ссылка на последний нарисованный объект (Line, Circle, Rect…)
+	long LastObject() {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		return sketch ? sketch->LastObject() : 0;
+	}
+	// Параметризовать объекты (пустой список — все объекты эскиза): совпадение точек,
+	// горизонталь, вертикаль, параллельность, перпендикулярность
+	bool Parametrize(const std::vector<long>& refs = {}, const Parametrize2D& options = Parametrize2D()) {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		return sketch && sketch->Parametrize(refs, options);
+	}
+	// Ограничение объекта a (точка pointA; -1 — объект целиком) относительно b (pointB)
+	bool AddConstraint(Constraint2D type, long a, int pointA = -1, long b = 0, int pointB = -1) {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		return sketch && sketch->AddConstraint(type, a, pointA, b, pointB);
+	}
+	// Размер, привязанный к геометрии эскиза (точки размера должны совпадать с её точками)
+	DimensionInfo AddDimension(const Dimension2D& dimension) {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		return sketch ? sketch->AddDimension(dimension) : DimensionInfo();
+	}
+	ObjectDefinition GetObjectDefinition(long ref) {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		return sketch ? sketch->GetObjectDefinition(ref) : ObjectDefinition::Unknown;
+	}
+	// Спроецировать в эскиз ребро, грань или вершину модели; ссылки на созданные объекты
+	std::vector<long> Project(const Node& modelObject) {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		return sketch ? sketch->Project(modelObject) : std::vector<long>();
+	}
+	// Спроецировать в эскиз начало координат модели — неподвижная точка для размеров положения
+	long ProjectOrigin() {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		return sketch ? sketch->ProjectOrigin() : 0;
+	}
+	// Если эскиз лежит на грани — спроецировать её контур (опоры для привязок и размеров)
+	std::vector<long> ProjectSupport() {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		return sketch ? sketch->ProjectSupport() : std::vector<long>();
+	}
+	// Грань, на которой лежит эскиз (пусто, если эскиз на плоскости)
+	Face GetSupportFace() {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		return Face(sketch ? sketch->GetSupportFace() : nullptr);
+	}
+	// Удалить объект эскиза; false — объект не найден (результат Delete у КОМПАСа ненадёжен)
+	bool DeleteObject(long ref) {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		return sketch && sketch->DeleteObject(ref);
+	}
+	// Определённость эскиза (по текущему сеансу редактирования)
+	SketchDefinition GetDefinition() {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		return sketch ? sketch->GetDefinition() : SketchDefinition::Unknown;
+	}
+	// Начало и оси эскиза в координатах модели (z — нормаль эскиза)
+	std::optional<Placement> GetPlacement() {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		return sketch ? sketch->GetPlacement() : std::nullopt;
+	}
 	Plane::Point2D Projection(const Vertex::Point3D& point) {
 		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
 		return sketch ? sketch->Projection(point) : Plane::Point2D{0., 0.};

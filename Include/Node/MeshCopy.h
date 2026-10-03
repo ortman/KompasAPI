@@ -2,6 +2,7 @@
 #define _ComTest_MeshCopy_h_
 
 #include "../Node.h"
+#include "Axis.h"
 #include <vector>
 
 class MeshCopy : public Node {
@@ -11,6 +12,8 @@ public:
 		virtual void SetParam1(int count, double step) = 0;
 		virtual void SetParam2(int count, double step) = 0;
 		virtual void AddNode(const Node& node) = 0;
+		virtual void SetAxis1(const Axis& axis) {}
+		virtual void SetAxis2(const Axis& axis) {}
 	};
 
 	static inline int TYPE = 35; /* o3d_meshCopy */
@@ -30,6 +33,20 @@ public:
 		if (mesh) {
 			mesh->SetParam1(count1, step1);
 			mesh->SetParam2(count2, step2);
+			for (const Node& n : nodes) mesh->AddNode(n);
+		}
+		node->Create();
+	}
+	// Линейный массив вдоль осей модели: axis2 = nullptr — только одно направление
+	MeshCopy(std::unique_ptr<NodeImpl> p, const Axis& axis1, int count1, double step1, const Axis* axis2, int count2, double step2,
+	         const std::vector<Node>& nodes, const std::optional<std::string>& name = std::nullopt) : Node(std::move(p)) {
+		if (name.has_value()) node->SetName(name.value());
+		MeshCopyImpl* mesh = dynamic_cast<MeshCopyImpl*>(node.get());
+		if (mesh) {
+			mesh->SetAxis1(axis1);
+			mesh->SetParam1(count1, step1);
+			if (axis2) mesh->SetAxis2(*axis2);
+			mesh->SetParam2(axis2 ? count2 : 1, step2);
 			for (const Node& n : nodes) mesh->AddNode(n);
 		}
 		node->Create();

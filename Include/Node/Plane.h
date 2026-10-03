@@ -87,6 +87,34 @@ public:
 	}
 };
 
+class OffsetPlane : public Plane {
+public:
+	class OffsetPlaneImpl : virtual public Plane::PlaneImpl {
+	public:
+		virtual void SetBasePlane(const Plane& base) = 0;
+		// Отрицательное смещение — в сторону, противоположную нормали базовой плоскости
+		virtual void SetOffset(double offset) = 0;
+	};
+
+	static inline int TYPE = 14; /* o3d_planeOffset */
+	OffsetPlane(std::unique_ptr<NodeImpl> p, const Plane& base, double offset, bool show = false, const std::optional<std::string>& name = std::nullopt) : Plane(std::move(p), false) {
+		if (name.has_value()) node->SetName(name.value());
+		OffsetPlaneImpl* plane = dynamic_cast<OffsetPlaneImpl*>(node.get());
+		if (plane) {
+			plane->SetBasePlane(base);
+			plane->SetOffset(offset);
+			plane->Show(show);
+		}
+		node->Create();
+	}
+	OffsetPlane(Node&& node) : Plane(std::move(node)) {}
+	OffsetPlane& SetOffset(double offset) {
+		OffsetPlaneImpl* plane = dynamic_cast<OffsetPlaneImpl*>(node.get());
+		if (plane) plane->SetOffset(offset);
+		return *this;
+	}
+};
+
 class EdgePointPlane : public Plane {
 public:
 	class EdgePointPlaneImpl : virtual public Plane::PlaneImpl {

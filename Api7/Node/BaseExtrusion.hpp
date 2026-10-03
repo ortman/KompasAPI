@@ -1,27 +1,16 @@
 #pragma once
 
 #include "../../Include/Node/BaseExtrusion.h"
-#include "../Node.hpp"
+#include "Extrusion.hpp"
 
-class BaseExtrusionApi7 : public NodeApi7, public BaseExtrusion::BaseExtrusionImpl {
+class BaseExtrusionApi7 : public NodeApi7, public BaseExtrusion::BaseExtrusionImpl,
+                          private ExtrusionApi7<K5::ksBaseExtrusionDefinitionPtr> {
 public :
 	BaseExtrusionApi7(K5::ksEntityPtr e, IDispatchPtr d) : NodeApi7(e, d) {}
-	void SetDepth1(double depth) override {
-		K5::ksBaseExtrusionDefinitionPtr d = def;
-		K5::ksExtrusionParamPtr param = d->ExtrusionParam();
-		param->depthNormal = depth;
-	}
-	void SetDepth2(double depth) override {
-		K5::ksBaseExtrusionDefinitionPtr d = def;
-		K5::ksExtrusionParamPtr param = d->ExtrusionParam();
-		param->depthReverse = depth;
-	}
-	void SetSketch(Sketch& sketch) override {
-		K5::ksBaseExtrusionDefinitionPtr d = def;
-		NodeApi7* node = dynamic_cast<NodeApi7*>(sketch.node.get());
-		if (node) {
-			K5::ksEntityPtr sketchEntity = node->entity;
-			d->SetSketch(sketchEntity);
-		}
-	}
+	void SetDepth1(double depth) override { ExtrusionApi7::SetDepth1(def, depth); }
+	void SetDepth2(double depth) override { ExtrusionApi7::SetDepth2(def, depth); }
+	void SetParams(const ExtrusionParams& params) override { ExtrusionApi7::SetParams(def, params); }
+	void SetSketch(Sketch& sketch) override { ExtrusionApi7::SetSketch(def, sketch); }
+	NodeParams GetParamMap() override { return ExtrusionApi7::GetParamMap(def); }
+	void SetParamMap(const NodeParams& params) override { ExtrusionApi7::SetParamMap(def, params); }
 };

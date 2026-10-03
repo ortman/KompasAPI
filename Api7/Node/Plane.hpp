@@ -93,3 +93,21 @@ public :
 		if (node) d->SetPoint(node->def);
 	}
 };
+
+class OffsetPlaneApi7 : public PlaneApi7, public OffsetPlane::OffsetPlaneImpl {
+public :
+	OffsetPlaneApi7(K5::ksEntityPtr e, IDispatchPtr d) : PlaneApi7(e, d) {}
+	void SetBasePlane(const Plane& base) override {
+		K5::ksPlaneOffsetDefinitionPtr d = def;
+		NodeApi7* node = dynamic_cast<NodeApi7*>(base.node.get());
+		if (!d || !node || !node->entity) throw Kompas3DException("Не могу получить базовую плоскость для смещённой плоскости");
+		K5::ksEntityPtr planeEntity = node->entity;
+		d->SetPlane(planeEntity);
+	}
+	void SetOffset(double offset) override {
+		K5::ksPlaneOffsetDefinitionPtr d = def;
+		if (!d) return;
+		d->direction = offset >= 0.0;
+		d->offset = offset >= 0.0 ? offset : -offset;
+	}
+};
