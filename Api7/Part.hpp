@@ -151,7 +151,9 @@ public:
 	}
 	std::string GetDesignation() override {
 		K7::IPart7Ptr part7 = part ? ToApi7<K7::IPart7Ptr>(part) : nullptr;
-		return part7 ? BstrToUtf8(part7->Marking) : std::string();
+		std::string s = part7 ? BstrToUtf8(part7->Marking) : std::string();
+		for (size_t p; (p = s.find("$|")) != std::string::npos;) s.erase(p, 2);   // разделители частей обозначения
+		return s;
 	}
 	bool SetTitle(const std::string& name, const std::string& designation) override {
 		K7::IPart7Ptr part7 = part ? ToApi7<K7::IPart7Ptr>(part) : nullptr;
@@ -161,6 +163,149 @@ public:
 		part7->Update();
 		return (name.empty() || BstrToUtf8(part7->Name) == name) && (designation.empty() || BstrToUtf8(part7->Marking) == designation);
 	}
+	// Системное свойство: менеджер свойств приложения, документ сборки, идентификатор (VT_R8)
+	K7::IPropertyPtr SystemProperty(int id) {
+		K7::IPropertyMngPtr manager = ComEvent::kompas7;
+		K7::IKompasDocumentPtr document = doc ? ToApi7<K7::IKompasDocumentPtr>(doc) : nullptr;
+		if (!manager || !document) return nullptr;
+		return manager->GetProperty(_variant_t((IDispatch*)document, true), _variant_t((double)id));
+	}
+
+	std::optional<std::string> GetSystemProperty(int id) override {
+		K7::IPart7Ptr part7 = part ? ToApi7<K7::IPart7Ptr>(part) : nullptr;
+		K7::IPropertyKeeperPtr keeper = part7;
+		K7::IPropertyPtr property = SystemProperty(id);
+		if (!keeper || !property) return std::nullopt;
+		_variant_t value;
+		VARIANT_BOOL fromSource = VARIANT_FALSE;
+		if (!keeper->GetPropertyValue(property, &value, VARIANT_TRUE, &fromSource)) return std::nullopt;
+		if (value.vt == VT_BOOL) return std::string(value.boolVal ? "true" : "false");
+		try {
+			_variant_t text;
+			text.ChangeType(VT_BSTR, &value);
+			return BstrToUtf8(text.bstrVal);
+		} catch (const _com_error&) {
+			return std::nullopt;
+		}
+	}
+
+	// Логическое свойство КОМПАС читает строкой «Да»/«Нет»
+	static bool IsYes(const std::string& v) { return v == "true" || v == "1" || v == "-1" || v == "Да" || v == "да"; }
+
+	bool SetSystemProperty(int id, const std::variant<bool, double, std::string>& v) override {
+		K7::IPart7Ptr part7 = part ? ToApi7<K7::IPart7Ptr>(part) : nullptr;
+		K7::IPropertyKeeperPtr keeper = part7;
+		K7::IPropertyPtr property = SystemProperty(id);
+		if (!keeper || !property) return false;
+		auto matches = [&]() {
+			const std::optional<std::string> now = GetSystemProperty(id);
+			if (!now) return false;
+			if (std::holds_alternative<bool>(v)) return IsYes(*now) == std::get<bool>(v);
+			if (std::holds_alternative<std::string>(v)) return *now == std::get<std::string>(v);
+			return true;
+		};
+		// Результат SetPropertyValue ненадёжен — сверяем чтением; логическое — разными типами
+		std::vector<_variant_t> values;
+		if (std::holds_alternative<bool>(v)) {
+			const bool b = std::get<bool>(v);
+			values = {_variant_t(b), _variant_t((long)(b ? 1 : 0)), _variant_t(Utf8ToBstr(b ? "Да" : "Нет"))};
+		} else if (std::holds_alternative<double>(v)) {
+			values = {_variant_t(std::get<double>(v))};
+		} else {
+			values = {_variant_t(Utf8ToBstr(std::get<std::string>(v)))};
+		}
+		for (const _variant_t& value : values) {
+			keeper->SetPropertyValue(property, value, VARIANT_TRUE);
+			part7->Update();
+			if (matches()) return true;
+		}
+		return false;
+	}
+
+	bool IsStandard() override {
+		K7::IPart7Ptr part7 = part ? ToApi7<K7::IPart7Ptr>(part) : nullptr;
+		return part7 && part7->Standard == VARIANT_TRUE;
+	}
+
+	std::optional<std::pair<double, double>> GetHatch() override {
+		K7::IPart7Ptr part7 = part ? ToApi7<K7::IPart7Ptr>(part) : nullptr;
+		K7::IHatchParamPtr hatch = part7 ? part7->HatchParam : nullptr;
+		if (!hatch) return std::nullopt;
+		return std::make_pair((double)hatch->HatchAngle, (double)hatch->Step);
+	}
+
+	bool SetHatch(double angle, double step) override {
+		K7::IPart7Ptr part7 = part ? ToApi7<K7::IPart7Ptr>(part) : nullptr;
+		K7::IHatchParamPtr hatch = part7 ? part7->HatchParam : nullptr;
+		if (!hatch) return false;
+		hatch->HatchAngle = angle;
+		hatch->Step = step;
+		part7->Update();
+		const auto now = GetHatch();
+		return now && std::abs(now->first - angle) < 1e-6 && std::abs(now->second - step) < 1e-6;
+	}
+
+	// Тела компонента: IBody7 по одному или массивом
+	static std::vector<K7::IBody7Ptr> Bodies(K7::IPart7Ptr part7) {
+		std::vector<K7::IBody7Ptr> out;
+		K7::IFeature7Ptr feature = part7;   // тела детали — у её «операции» IFeature7
+		if (!feature) return out;
+		_variant_t v = feature->GetResultBodies();
+		if (v.vt == VT_DISPATCH && v.pdispVal) {
+			if (K7::IBody7Ptr b = v.pdispVal) out.push_back(b);
+		} else if ((v.vt & VT_ARRAY) && v.parray) {
+			LONG lo = 0, hi = -1;
+			SafeArrayGetLBound(v.parray, 1, &lo);
+			SafeArrayGetUBound(v.parray, 1, &hi);
+			for (LONG i = lo; i <= hi; ++i) {
+				if ((v.vt & VT_TYPEMASK) == VT_VARIANT) {
+					_variant_t item;
+					if (SUCCEEDED(SafeArrayGetElement(v.parray, &i, &item)) && item.vt == VT_DISPATCH) {
+						if (K7::IBody7Ptr b = item.pdispVal) out.push_back(b);
+					}
+				} else {
+					IDispatch* item = nullptr;
+					if (SUCCEEDED(SafeArrayGetElement(v.parray, &i, &item)) && item) {
+						if (K7::IBody7Ptr b = item) out.push_back(b);
+						item->Release();
+					}
+				}
+			}
+		}
+		return out;
+	}
+
+	int CheckIntersection(Part& other, bool tangent) override {
+		PartApi7* o = dynamic_cast<PartApi7*>(other.part.get());
+		if (!part || !o || !o->part) return -1;
+		std::vector<K7::IBody7Ptr> mine = Bodies(ToApi7<K7::IPart7Ptr>(part)), theirs = Bodies(ToApi7<K7::IPart7Ptr>(o->part));
+		if (mine.empty() || theirs.empty()) return -1;
+		int worst = 0;
+		for (K7::IBody7Ptr& a : mine) {
+			for (K7::IBody7Ptr& b : theirs) {
+				_variant_t r = a->CheckIntersectionWithBody(b, tangent ? VARIANT_TRUE : VARIANT_FALSE);
+				auto take = [&](long t) { worst = (std::max)(worst, (int)t); };
+				if (r.vt == VT_I4 || r.vt == VT_I2) {
+					take(r.vt == VT_I4 ? r.lVal : r.iVal);
+				} else if ((r.vt & VT_ARRAY) && r.parray) {
+					LONG lo = 0, hi = -1;
+					SafeArrayGetLBound(r.parray, 1, &lo);
+					SafeArrayGetUBound(r.parray, 1, &hi);
+					for (LONG i = lo; i <= hi; ++i) {
+						if ((r.vt & VT_TYPEMASK) == VT_VARIANT) {
+							_variant_t item;
+							if (SUCCEEDED(SafeArrayGetElement(r.parray, &i, &item))) take((long)item);
+						} else {
+							long item = 0;
+							if (SUCCEEDED(SafeArrayGetElement(r.parray, &i, &item))) take(item);
+						}
+					}
+				}
+			}
+		}
+		return worst;
+	}
+
 	bool IsFixed() override { return part && part->fixedComponent; }
 	void SetFixed(bool fixed) override { if (part) part->fixedComponent = fixed; }
 	// Положение компонента — через API7: ksPart::GetPlacement отдаёт положение при вставке,

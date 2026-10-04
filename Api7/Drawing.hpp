@@ -210,6 +210,67 @@ public:
 		return ReadView(view);
 	}
 
+	std::vector<std::string> ComponentsAt(long number, const std::vector<std::array<double, 2>>& points, Doc3D& model3d) override;
+
+	long AddPositionLeader(long number, double x, double y, double shelfX, double shelfY, const std::string& text, bool shelfRight) override {
+		K7::ISymbols2DContainerPtr symbols = FindView(number);
+		K7::ILeadersPtr leaders = symbols ? symbols->Leaders : nullptr;
+		if (!leaders) return 0;
+		K7::IBaseLeaderPtr base = leaders->Add(KConst::ksDrPosLeader);
+		K7::IPositionLeaderPtr position = base;
+		K7::IBranchsPtr branchs = base;
+		if (!base || !position || !branchs) return 0;
+		branchs->X0 = shelfX;
+		branchs->Y0 = shelfY;
+		branchs->AddBranchByPoint(-1, x, y);
+		base->ArrowType = KConst::ksLeaderPoint;
+		position->ShelfDirection = shelfRight ? KConst::ksLSRight : KConst::ksLSLeft;
+		if (K7::ITextPtr positions = position->Positions) positions->Str = Utf8ToBstr(text);
+		K7::IDrawingObjectPtr object = base;
+		if (!object->Update()) {
+			object->Delete();
+			return 0;
+		}
+		return object->Reference;
+	}
+
+	int DeletePositionLeaders(long number) override {
+		K7::ISymbols2DContainerPtr symbols = FindView(number);
+		K7::ILeadersPtr leaders = symbols ? symbols->Leaders : nullptr;
+		if (!leaders) return 0;
+		std::vector<K7::IDrawingObjectPtr> found;
+		for (long i = 0; i < leaders->Count; ++i) {
+			K7::IBaseLeaderPtr leader = leaders->GetLeader(_variant_t(i));
+			if (K7::IPositionLeaderPtr position = leader) found.push_back(leader);
+		}
+		for (K7::IDrawingObjectPtr& o : found) o->Delete();
+		return (int)found.size();
+	}
+
+	std::vector<std::vector<double>> GetCutLines(long number) override {
+		std::vector<std::vector<double>> out;
+		K7::ISymbols2DContainerPtr symbols = FindView(number);
+		K7::ICutLinesPtr lines = symbols ? symbols->CutLines : nullptr;
+		const long count = lines ? lines->Count : 0;
+		for (long i = 0; i < count; ++i) {
+			K7::ICutLinePtr cut = lines->GetCutLine(_variant_t(i));
+			if (!cut) continue;
+			_variant_t points = cut->Points;
+			if (points.vt != (VT_ARRAY | VT_R8) || !points.parray) continue;
+			LONG lo = 0, hi = -1;
+			SafeArrayGetLBound(points.parray, 1, &lo);
+			SafeArrayGetUBound(points.parray, 1, &hi);
+			std::vector<double> v;
+			for (LONG k = lo; k <= hi; ++k) {
+				double d = 0;
+				SafeArrayGetElement(points.parray, &k, &d);
+				v.push_back(d);
+			}
+			if (v.size() >= 4) out.push_back(std::move(v));
+		}
+		return out;
+	}
+
 	// Вид разреза строится КОМПАСом в осях базового вида, «верх» зависит от направления взгляда
 	Drawing::View AddSection(Drawing::SectionParams& p) override {
 		K7::IViewPtr base = FindView(p.baseView);
@@ -243,10 +304,13 @@ public:
 			}
 			assoc->BaseObject = cutObject;
 			assoc->Section = p.section ? VARIANT_TRUE : VARIANT_FALSE;
+			assoc->SameHatch = VARIANT_FALSE;   // сборка: у каждой детали своя штриховка (ГОСТ 2.306)
 			assoc->ProjectionLink = p.projectionLink ? VARIANT_TRUE : VARIANT_FALSE;
 			view->X = p.x;
 			view->Y = p.y;
 			view->Scale = base->Scale;
+			// «А-А» без «(1:1)»: масштаб тот же, что у базового вида (ГОСТ 2.305)
+			if (K7::IViewDesignationPtr label = view) label->ShowScale = VARIANT_FALSE;
 			if (!view->Update()) {
 				view->Delete();
 				cutObject->Delete();
@@ -341,7 +405,20 @@ public:
 		K7::IStampPtr stamp = Sheet0()->Stamp;
 		if (!stamp) throw Kompas3DException("У листа нет основной надписи");
 		for (const auto& [id, value] : cells) {
-			if (K7::ITextPtr text = stamp->GetText(id)) text->Str = Utf8ToBstr(value);
+			K7::ITextPtr text = stamp->GetText(id);
+			if (!text) continue;
+			// Несколько строк («Узел вала» / «Сборочный чертёж») — отдельными строками текста
+			std::vector<std::string> lines;
+			for (size_t start = 0;;) {
+				const size_t end = value.find('\n', start);
+				lines.push_back(value.substr(start, end == std::string::npos ? std::string::npos : end - start));
+				if (end == std::string::npos) break;
+				start = end + 1;
+			}
+			text->Str = Utf8ToBstr(lines[0]);
+			for (size_t i = 1; i < lines.size(); ++i) {
+				if (K7::ITextLinePtr line = text->Add()) line->Str = Utf8ToBstr(lines[i]);
+			}
 		}
 		stamp->Update();
 		int written = 0;

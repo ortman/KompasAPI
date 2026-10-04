@@ -458,6 +458,48 @@ cmake -B build -DKOMPAS_SDK_DIR=C:/KSDK24
     (наименование) и 2 (обозначение) связаны со свойствами модели (`IPart7::Name`, `Marking`)
     и перезаписываются из неё — менять их надо в модели (`Part::SetTitle`); обозначение
     читается с разделителями частей «$|»;
+  - `IArc::Direction`: TRUE — по часовой (по справке и на опыте); у `SketchItem` дуги
+    `dir = 1` — против часовой (до исправления чтение API7 переворачивало дуги);
+  - проекция оси модели в эскиз — бесконечная вспомогательная прямая `ksDrLine` (тип 28,
+    `ILine`: X1, Y1, X2, Y2, Angle); `Items()` отдаёт её отрезком ±1000 мм;
+  - ограничения: `ConstraintSpec` (точки — индексы: у отрезка 0/1, у окружности и дуги 0 —
+    центр, у дуги 1/2 — начало/конец), ось симметрии — `IParametriticConstraint::Axis`;
+    `Sketch::AddConstraints` ставит пакет с кешем объектов на весь сеанс и отменяет связь,
+    после которой эскиз переопределён (`ConstraintsState` = UnresolvedRedundancy);
+  - признак `ISketch::ConstraintsState` ненадёжен при касании дуги с отрезком по оси в общей
+    точке: эскиз «определён», а лишние размеры принимаются без переопределения — вместо
+    касания центр дуги выравнивается с точкой стыка (`HAlignPoints`/`VAlignPoints`);
+    `IDrawingObject1::ConstraintsState` объектов в v23 всегда 0 — не годится;
+  - угловой размер: `IAngleDimensions::Add(ksDrADimension)`, `BaseObject1/2` — отрезки;
+  - пользовательская проекция модели: `ksViewProjectionCollection::NewViewProjection` →
+    `SetMatrix3D` (16 чисел, 4×4 построчно: ось x листа, ось y листа, направление на наблюдателя в
+    осях модели, затем 0 0 0 1) → `name` → `Add`; одноимённая — `DetachByName`. Матрицу проекции
+    читает `ksViewProjection::GetPlacement()->GetMatrix3D` (та же раскладка, что у
+    `IAssociationView::ProjectionMatrix`); стандартные «Спереди» — x листа +Y, y +Z;
+  - обозначение вида разреза без «(1:1)»: `IViewDesignation::ShowScale = FALSE`;
+  - текст под полкой размера: `IDimensionText::TextUnder` (IText) — Ø и × тоже спецзнаками, иначе
+    шрифт ГОСТ покажет «Ш»/«Ч»; линейному размеру можно задать положение надписи
+    `IDimension2D::SetTextPosition`;
+  - линии разреза вида: `ISymbols2DContainer::CutLines`, `ICutLine::Points` — координаты вида;
+  - компоненты сборки: габарит `GetBoundingBox` — в координатах сборки, а грани и рёбра
+    (`EntityCollection`) — в своих координатах детали; положение — `GetPlacement` (оси и начало);
+  - системные свойства компонента: `IPropertyMng` (приложение) `GetProperty(документ, (double)id)` и
+    `IPropertyKeeper` (IPart7) `Get/SetPropertyValue`; id: 4 обозначение, 5 наименование, 15 позиция,
+    20 раздел спецификации, 50 «Рассекать на разрезах». Логическое значение читается строкой
+    «Да»/«Нет», результат `SetPropertyValue` ненадёжен — проверка чтением;
+  - штриховка компонента в разрезах — `IPart7::HatchParam` (угол, шаг); у вида разреза
+    `IAssociationView::SameHatch = FALSE`;
+  - `IAssociationView::FindFace(x, y, IKompasDocument3D)` — грань модели, видимая в точке вида;
+    `IModelObject::Part` — её компонент (по нему ставятся позиции);
+  - позиционная линия-выноска: `ILeaders::Add(ksDrPosLeader)` → `IBranchs` (X0/Y0 — начало полки,
+    `AddBranchByPoint(-1, x, y)`), `IPositionLeader::Positions` (текст), `ArrowType = ksLeaderPoint`;
+  - спецификация: `Documents.Add(ksDocumentSpecification)`, `SpecificationDescriptions.Active.
+    BaseObjects.Add(раздел, 0)`, `AttachedDocuments.Add(файл, TRUE)` + `Update` — колонки
+    наименования, обозначения, формата заполняются из документа; `Columns.Column(тип, 1, 0).Text`;
+    разделы стандартного стиля: 5 документация, 15 сборочные единицы, 20 детали, 25 стандартные
+    изделия; `SaveAs` спецификации возвращает FALSE и при записанном файле;
+  - графа основной надписи: несколько строк — `IText::Add()`; графа 1, связанная с моделью, вторую
+    строку не показывает;
   - разрез/сечение: линия разреза `ISymbols2DContainer::CutLines->Add()` (`Points` — x0, y0,
     x1, y1… вида), затем `IViews::Add(vt_Section)` с `IAssociationView::BaseObject` = линия и
     `Section` (TRUE — сечение). `ICutLine::ArrowPos` в v23 работает наоборот относительно справки

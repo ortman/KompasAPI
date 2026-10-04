@@ -2,6 +2,7 @@
 #define _ComTest_Node_h_
 
 #include <string>
+#include <vector>
 #include <exception>
 #include <optional>
 #include <map>
@@ -30,6 +31,8 @@ public:
 		virtual void Update() = 0;
 		// Код ошибки построения операции (0 — без ошибок)
 		virtual int GetError() const { return 0; }
+		// Опорные объекты операции: эскиз выдавливания, плоскость эскиза — имена
+		virtual std::vector<std::string> GetSubFeatureNames() const { return {}; }
 		// Параметры, которые можно прочитать и изменить у готовой операции
 		virtual NodeParams GetParamMap() { return {}; }
 		// Идентичность объекта КОМПАСа: одинакова у двух обёрток одного объекта
@@ -54,6 +57,8 @@ public:
 	Node& SetName(const std::string& name) { node->SetName(name); return *this; }
 	Node& Update() { node->Update(); return *this; }
 	int GetError() const { return node->GetError(); }
+	// Опорные объекты: эскиз операции (выдавливание, вырез, вращение, ребро…), плоскость эскиза
+	std::vector<std::string> GetSubFeatureNames() const { return node->GetSubFeatureNames(); }
 	// Параметры операции; после SetParamMap нужен Update() и перестроение модели
 	NodeParams GetParamMap() { return node->GetParamMap(); }
 	// Указатель для сравнения: тот же объект КОМПАСа — тот же указатель (nullptr — неизвестно)

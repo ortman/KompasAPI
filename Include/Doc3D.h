@@ -1,7 +1,9 @@
 #ifndef _ComTest_Document3D_h_
 #define _ComTest_Document3D_h_
 
+#include <array>
 #include <concepts>
+#include <optional>
 #include <string>
 #include <memory>
 
@@ -146,6 +148,8 @@ public:
 		virtual bool IsPart() { return true; }
 		virtual bool IsModified() { return false; }
 		virtual std::vector<std::pair<int, std::string>> GetProjections() { return {}; }
+		virtual std::optional<std::array<double, 16>> GetProjectionMatrix(const std::string& name) { return std::nullopt; }
+		virtual bool SetProjection(const std::string& name, const std::array<double, 16>& matrix) { return false; }
 		virtual bool Save() { return false; }
 		virtual bool SaveAsNative(const std::string& path) { return false; }
 		virtual bool Rebuild() { return false; }
@@ -184,6 +188,10 @@ public:
 	bool IsModified() { return doc->IsModified(); }
 	// Проекции модели: тип (значение View) и имя ("#Спереди") — для видов чертежа
 	std::vector<std::pair<int, std::string>> GetProjections() { return doc->GetProjections(); }
+	// Матрица 4×4 проекции модели по имени (ksPlacement::GetMatrix3D)
+	std::optional<std::array<double, 16>> GetProjectionMatrix(const std::string& name) { return doc->GetProjectionMatrix(name); }
+	// Пользовательская проекция (заменяет одноимённую); матрица — как у GetProjectionMatrix
+	bool SetProjection(const std::string& name, const std::array<double, 16>& matrix) { return doc->SetProjection(name, matrix); }
 	// Сохранить в родном формате (.m3d/.a3d) по текущему пути
 	bool Save() { return doc->Save(); }
 	// Сохранить в родном формате под новым именем

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <map>
+
 #include "../Include/Annotation2D.h"
 #include "Node.hpp"
 
@@ -103,33 +105,74 @@ public:
 
 	// Объект API7 по ссылке API5. Объект ищется среди объектов вида того же сеанса: объект,
 	// полученный через TransferReference, в сеансе API7 эскиза для привязок не годится
-	K7::IDrawingObject1Ptr Object(long ref) {
-		if (!ref) return nullptr;
+	// Объекты вида по ссылкам — один перебор на много обращений; новые объекты (размеры,
+	// построенная геометрия) находятся перечитыванием при промахе
+	std::map<long, K7::IDrawingObject1Ptr> cache;
+
+	void Reload() {
+		cache.clear();
 		K7::IDrawingContainerPtr container = view;
-		if (container) {
-			_variant_t all = container->GetObjects(_variant_t((long)KConst::ksAllObj));
-			auto match = [&](IDispatch* item) -> K7::IDrawingObject1Ptr {
-				K7::IKompasAPIObjectPtr o = item;
-				return o && o->Reference == ref ? K7::IDrawingObject1Ptr(item) : nullptr;
-			};
-			if (all.vt == VT_DISPATCH && all.pdispVal) {
-				if (K7::IDrawingObject1Ptr found = match(all.pdispVal)) return found;
-			} else if ((all.vt & VT_ARRAY) && all.parray) {
-				LONG lo = 0, hi = -1;
-				SafeArrayGetLBound(all.parray, 1, &lo);
-				SafeArrayGetUBound(all.parray, 1, &hi);
-				for (LONG i = lo; i <= hi; ++i) {
-					IDispatch* item = nullptr;
-					if (FAILED(SafeArrayGetElement(all.parray, &i, &item)) || !item) continue;
-					K7::IDrawingObject1Ptr found = match(item);
-					item->Release();
-					if (found) return found;
-				}
+		if (!container) return;
+		_variant_t all = container->GetObjects(_variant_t((long)KConst::ksAllObj));
+		auto keep = [&](IDispatch* item) {
+			K7::IKompasAPIObjectPtr o = item;
+			if (o) cache[o->Reference] = K7::IDrawingObject1Ptr(item);
+		};
+		if (all.vt == VT_DISPATCH && all.pdispVal) {
+			keep(all.pdispVal);
+		} else if ((all.vt & VT_ARRAY) && all.parray) {
+			LONG lo = 0, hi = -1;
+			SafeArrayGetLBound(all.parray, 1, &lo);
+			SafeArrayGetUBound(all.parray, 1, &hi);
+			for (LONG i = lo; i <= hi; ++i) {
+				IDispatch* item = nullptr;
+				if (FAILED(SafeArrayGetElement(all.parray, &i, &item)) || !item) continue;
+				keep(item);
+				item->Release();
 			}
 		}
+	}
+
+	K7::IDrawingObject1Ptr Object(long ref) {
+		if (!ref) return nullptr;
+		auto it = cache.find(ref);
+		if (it == cache.end()) {
+			Reload();
+			it = cache.find(ref);
+		}
+		if (it != cache.end() && it->second) return it->second;
 		if (!ComEvent::kompas5) return nullptr;
 		IUnknownPtr unknown = ComEvent::kompas5->TransferReference(ref, doc->reference);
 		return K7::IDrawingObject1Ptr(unknown);
+	}
+
+	// Объект удалён — убрать из кеша
+	void Forget(long ref) { cache.erase(ref); }
+
+	// Ограничение; Create() у КОМПАСа v23 ненадёжен — созданное ищется в списках ограничений
+	// объектов. Возвращает созданное ограничение (для отката) или nullptr
+	K7::IParametriticConstraintPtr CreateConstraint(const ConstraintSpec& s) {
+		K7::IDrawingObject1Ptr obj = Object(s.a);
+		if (!obj) return nullptr;
+		K7::IDrawingObject1Ptr partner = s.b ? Object(s.b) : nullptr;
+		if (s.b && !partner) return nullptr;
+		auto count = [&]() { return Constraints(obj).size() + (partner ? Constraints(partner).size() : 0); };
+		const size_t before = count();
+		K7::IParametriticConstraintPtr c = obj->NewConstraint();
+		if (!c) return nullptr;
+		c->ConstraintType = (KConst::ksConstraintTypeEnum)s.type;
+		if (s.pa >= 0) c->Index = s.pa;
+		if (partner) {
+			c->Partner = _variant_t((IDispatch*)K7::IDrawingObjectPtr(partner), true);
+			if (s.pb >= 0) c->PartnerIndex = s.pb;
+		}
+		if (s.axis) {
+			K7::IDrawingObject1Ptr axis = Object(s.axis);
+			if (!axis) return nullptr;
+			c->Axis = K7::IDrawingObjectPtr(axis);
+		}
+		c->Create();
+		return count() > before ? c : nullptr;
 	}
 
 	// Объекты вида (эскиза) через API7; ссылки действительны в текущем сеансе редактирования
@@ -162,8 +205,19 @@ public:
 				case 3: {   // ksDrArc
 					K7::IArcPtr o = item;
 					it.kind = SketchItem::Kind::Arc;
-					it.v = {o->Xc, o->Yc, o->Radius, o->X1, o->Y1, o->X2, o->Y2, o->Direction ? 1.0 : -1.0};
+					// IArc::Direction: TRUE — по часовой (справка и опыт), у SketchItem 1 — против часовой
+					it.v = {o->Xc, o->Yc, o->Radius, o->X1, o->Y1, o->X2, o->Y2, o->Direction ? -1.0 : 1.0};
 					style(o->Style);
+					break;
+				}
+				case 28: {   // ksDrLine — вспомогательная прямая (проекция оси модели): длинный отрезок через две её точки
+					K7::ILinePtr o = item;
+					it.kind = SketchItem::Kind::Line;
+					const double dx = o->X2 - o->X1, dy = o->Y2 - o->Y1, len = std::hypot(dx, dy);
+					const double ux = len > 0 ? dx / len : std::cos(o->Angle * 3.14159265358979323846 / 180);
+					const double uy = len > 0 ? dy / len : std::sin(o->Angle * 3.14159265358979323846 / 180);
+					it.v = {o->X1 - ux * 1000, o->Y1 - uy * 1000, o->X1 + ux * 1000, o->Y1 + uy * 1000};
+					it.style = LineStyle::Auxiliary;
 					break;
 				}
 				case 5: {   // ksDrPoint
@@ -183,7 +237,7 @@ public:
 				case 34: {   // дуга эллипса
 					K7::IEllipseArcPtr o = item;
 					it.kind = SketchItem::Kind::EllipseArc;
-					it.v = {o->Xc, o->Yc, o->SemiAxisA, o->SemiAxisB, o->Angle, o->Angle1, o->Angle2, o->Direction ? 1.0 : -1.0};
+					it.v = {o->Xc, o->Yc, o->SemiAxisA, o->SemiAxisB, o->Angle, o->Angle1, o->Angle2, o->Direction ? -1.0 : 1.0};
 					style(o->Style);
 					break;
 				}
@@ -403,7 +457,7 @@ public:
 
 	// Свой текст размера: приставка и/или замена значения (обозначение резьбы — без знака Ø)
 	static void ApplyText(IDispatch* dimension, const Dimension2D& d) {
-		if (d.text.empty() && d.prefix.empty() && d.suffix.empty() && d.sign < 0) return;
+		if (d.text.empty() && d.prefix.empty() && d.suffix.empty() && d.under.empty() && d.sign < 0) return;
 		K7::IDimensionTextPtr text = dimension;
 		if (!text) return;
 		if (!d.prefix.empty()) {
@@ -413,6 +467,39 @@ public:
 		if (!d.suffix.empty()) {
 			K7::ITextLinePtr suffix = text->Suffix;
 			if (suffix) suffix->Str = Utf8ToBstr(d.suffix);
+		}
+		if (!d.under.empty()) {
+			// Шрифт ГОСТ читает строку в CP1251: Ø и × — спецзнаками (2 и 4), иначе «Ш», «Ч»
+			K7::ITextPtr under = text->TextUnder;
+			K7::ITextLinePtr line = under ? (under->Clear(), under->Add()) : nullptr;
+			if (line) {
+				static const std::pair<std::string, long> kSymbols[] = {{"Ø", 2}, {"×", 4}};
+				std::string part;
+				auto flush = [&]() {
+					if (part.empty()) return;
+					K7::ITextItemPtr item = line->Add();
+					item->ItemType = KConst::ksTItString;
+					item->Str = Utf8ToBstr(part);
+					item->Update();
+					part.clear();
+				};
+				for (size_t pos = 0; pos < d.under.size();) {
+					bool symbol = false;
+					for (const auto& [sym, number] : kSymbols) {
+						if (d.under.compare(pos, sym.size(), sym) != 0) continue;
+						flush();
+						K7::ITextItemPtr item = line->Add();
+						item->ItemType = KConst::ksTItSpecialSymbol;
+						item->Number = number;
+						item->Update();
+						pos += sym.size();
+						symbol = true;
+						break;
+					}
+					if (!symbol) part += d.under[pos++];
+				}
+				flush();
+			}
 		}
 		if (!d.text.empty()) {
 			text->AutoNominalValue = VARIANT_FALSE;
@@ -434,6 +521,24 @@ public:
 		DimensionInfo info;
 		using Kind = Dimension2D::Kind;
 		K7::IDrawingObject1Ptr obj;
+		if (d.kind == Kind::Angle) {
+			K7::IDrawingObjectPtr first = Object(d.object), second = Object(d.object2);
+			if (!first || !second) throw Kompas3DException("Для углового размера нужны два отрезка (object, object2)");
+			K7::IAngleDimensionPtr dim = Symbols()->AngleDimensions->Add(KConst::ksDrADimension);
+			dim->BaseObject1 = first;
+			dim->BaseObject2 = second;
+			dim->Xc = d.x1;
+			dim->Yc = d.y1;
+			dim->Radius = d.offset;
+			ApplyText(dim, d);
+			if (!dim->Update()) return info;
+			obj = dim;
+			obj->Associate();
+			info.associated = Attached(obj);
+			info.ref = ReferenceOf(obj);
+			if (d.driving && info.associated) Drive(info, obj);
+			return info;
+		}
 		if (d.kind == Kind::Diameter || d.kind == Kind::Radius) {
 			K7::IDrawingObjectPtr base = Object(d.object);
 			if (!base) throw Kompas3DException("Для размера Ø/R нужна окружность или дуга (object)");
@@ -484,6 +589,10 @@ public:
 			ApplyText(dim, d);
 			if (!dim->Update()) return info;
 			obj = dim;
+			if (d.textAt) {
+				K7::IDimension2DPtr dim2 = obj;
+				if (dim2 && dim2->SetTextPosition(d.textX, d.textY)) K7::IDrawingObjectPtr(obj)->Update();
+			}
 			obj->Associate();   // при совпадающих точках связи появляются уже в Update()
 			info.associated = Attached(obj);
 		}

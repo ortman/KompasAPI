@@ -50,6 +50,8 @@ private:
 	K5::ksDocument3DPtr doc = nullptr;
 
 public:
+	K5::ksDocument3DPtr Document() const { return doc; }   // для видов чертежа (FindFace)
+
 	Doc3DApi7(K5::ksDocument3DPtr p) {
 		doc = p;
 		if (!doc) throw Kompas3DException("Потерян указатель на документ");
@@ -79,6 +81,55 @@ public:
 			out.emplace_back((int)view->GetViewProjectonType(), Kompas3D::Cp1251ToUtf8((const char*)name));
 		}
 		return out;
+	}
+
+	K5::ksViewProjectionPtr FindProjection(const std::string& name) {
+		K5::ksViewProjectionCollectionPtr views = doc->GetViewProjectionCollection();
+		int count = views ? views->GetCount() : 0;
+		for (int i = 0; i < count; ++i) {
+			K5::ksViewProjectionPtr view = views->GetByIndex(i);
+			if (view && Kompas3D::Cp1251ToUtf8((const char*)(_bstr_t)view->name) == name) return view;
+		}
+		return nullptr;
+	}
+
+	std::optional<std::array<double, 16>> GetProjectionMatrix(const std::string& name) override {
+		K5::ksViewProjectionPtr view = FindProjection(name);
+		if (!view) return std::nullopt;
+		K5::ksPlacementPtr place = view->GetPlacement();
+		if (!place) return std::nullopt;
+		_variant_t matrix;
+		if (!place->GetMatrix3D(&matrix) || matrix.vt != (VT_ARRAY | VT_R8) || !matrix.parray) return std::nullopt;
+		LONG lo = 0, hi = -1;
+		SafeArrayGetLBound(matrix.parray, 1, &lo);
+		SafeArrayGetUBound(matrix.parray, 1, &hi);
+		if (hi - lo + 1 < 16) return std::nullopt;
+		std::array<double, 16> out{};
+		for (LONG i = 0; i < 16; ++i) {
+			LONG index = lo + i;
+			SafeArrayGetElement(matrix.parray, &index, &out[i]);
+		}
+		return out;
+	}
+
+	bool SetProjection(const std::string& name, const std::array<double, 16>& m) override {
+		K5::ksViewProjectionCollectionPtr views = doc->GetViewProjectionCollection();
+		if (!views) return false;
+		if (FindProjection(name)) views->DetachByName(Kompas3D::Utf8ToCp1251(name).c_str());
+		K5::ksViewProjectionPtr view = views->NewViewProjection();
+		if (!view) return false;
+		SAFEARRAY* array = SafeArrayCreateVector(VT_R8, 0, 16);
+		for (LONG i = 0; i < 16; ++i) {
+			double d = m[i];
+			SafeArrayPutElement(array, &i, &d);
+		}
+		_variant_t matrix;
+		matrix.vt = VT_ARRAY | VT_R8;
+		matrix.parray = array;
+		view->SetMatrix3D(matrix);
+		view->name = Kompas3D::Utf8ToCp1251(name).c_str();
+		views->Add(view);
+		return FindProjection(name) != nullptr;   // результат Add ненадёжен — проверка чтением
 	}
 
 	bool Save() override {

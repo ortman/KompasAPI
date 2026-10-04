@@ -3,6 +3,7 @@
 
 #include "Doc3D.h"
 #include "Drawing.h"
+#include "Specification.h"
 #include "Node/Sketch.h"
 #include "Node/BaseExtrusion.h"
 #include "Node/BossExtrusion.h"
@@ -28,6 +29,7 @@ public:
 		virtual Doc3D Open3D(std::string path, bool visible) { return Doc3D(); }
 		virtual Doc3D New3D(bool assembly, bool visible) { return Doc3D(); }
 		virtual Drawing NewDrawing(bool visible) { return Drawing(); }
+		virtual Specification NewSpecification(bool visible) { return Specification(); }
 		virtual Drawing GetActiveDrawing() { return Drawing(); }
 		virtual Drawing OpenDrawing(const std::string& path, bool visible) { return Drawing(); }
 		virtual int ActiveDocumentType() { return 0; }
@@ -52,6 +54,8 @@ public:
 	static Doc3D New3D(bool assembly = false, bool visible = true) { return kompas->New3D(assembly, visible); }
 	// Новый чертёж (лист по умолчанию — A4 книжный с основной надписью)
 	static Drawing NewDrawing(bool visible = true) { return kompas->NewDrawing(visible); }
+	// Новая спецификация (стиль по умолчанию — ГОСТ 2.106, форма 1)
+	static Specification NewSpecification(bool visible = true) { return kompas->NewSpecification(visible); }
 	// Активный документ, если это чертёж; иначе пустой Drawing
 	static Drawing GetActiveDrawing() { return kompas->GetActiveDrawing(); }
 	// Открыть .cdw (уже открытый — активировать)

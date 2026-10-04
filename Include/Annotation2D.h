@@ -24,10 +24,22 @@ enum class Constraint2D : int {
 	HAlignPoints = 9,        // две точки на одной горизонтали
 	VAlignPoints = 10,       // две точки на одной вертикали
 	MergePoints = 11,        // совпадение точек
+	Tangent = 15,            // касание двух кривых
 	Symmetry = 16,           // симметрия двух точек относительно отрезка
 	Collinear = 17,
 	PointOnCurveMiddle = 20,
 	Concentric = 22,
+};
+
+// Ограничение: объект a (точка pa), второй объект b (точка pb), ось симметрии axis.
+// Индексы точек с 0: у отрезка 0 — начало, 1 — конец; у окружности и дуги 0 — центр
+struct ConstraintSpec {
+	Constraint2D type = Constraint2D::MergePoints;
+	long a = 0;
+	int pa = -1;
+	long b = 0;
+	int pb = -1;
+	long axis = 0;
 };
 
 // Автоматическая параметризация группы объектов (команда «Параметризовать» КОМПАСа)
@@ -47,16 +59,18 @@ struct Parametrize2D {
 // совпадающим точкам. Диаметр и радиус ставятся на окружность или дугу object, размерная
 // линия под углом angle (градусы).
 struct Dimension2D {
-	enum class Kind { Horizontal, Vertical, Aligned, Diameter, Radius };
+	enum class Kind { Horizontal, Vertical, Aligned, Diameter, Radius, Angle };
 	Kind kind = Kind::Horizontal;
 	double x1 = 0, y1 = 0, x2 = 0, y2 = 0;
-	long object = 0;            // Ø/R: окружность или дуга
+	long object = 0;            // Ø/R: окружность или дуга; угловой: первый отрезок
+	long object2 = 0;           // угловой: второй отрезок (вершина — x1, y1; дуга — радиусом offset)
 	double offset = 10;
 	double angle = 45;
 	bool driving = true;        // управляющий размер: «размер с переменной»
 	std::string text;           // свой текст вместо значения (на чертеже: «M8-6H»), без знака Ø
 	std::string prefix;         // текст перед значением (на чертеже: «2 отв. »)
 	std::string suffix;         // текст после значения (на чертеже: «x90°»)
+	std::string under;          // текст под полкой Ø/R (цековка, глубина резьбы)
 	int shelf = 0;              // Ø/R: горизонтальная полка вправо (1) или влево (-1), 0 — по линии
 	int sign = -1;              // значок перед номиналом (IDimensionText::Sign): 1 — Ø у линейного размера; -1 — как есть
 	bool textAt = false;        // Ø/R: надпись в точке textX, textY (иначе КОМПАС ставит сам у окружности)

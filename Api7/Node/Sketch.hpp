@@ -17,10 +17,14 @@ private:
 	K7::ISketchPtr sketch7 = nullptr;
 	K7::IViewPtr view7 = nullptr;
 
-	Annotation2DApi7 Annotation() {
+	// Помощник аннотаций живёт весь сеанс редактирования: кеш объектов по ссылкам
+	std::unique_ptr<Annotation2DApi7> annotation;
+
+	Annotation2DApi7& Annotation() {
 		BeginEdit();
 		if (!view7) throw Kompas3DException("Ограничения и размеры эскиза требуют редактирования через API7");
-		return Annotation2DApi7(doc2D, view7);
+		if (!annotation) annotation = std::make_unique<Annotation2DApi7>(doc2D, view7);
+		return *annotation;
 	}
 
 public :
@@ -243,7 +247,27 @@ public :
 		K7::IDrawingObjectPtr object = Annotation().Object(ref);
 		if (!object) return false;
 		object->Delete();   // возвращает FALSE и при удалённом объекте
+		Annotation().Forget(ref);
 		return true;
+	}
+
+	std::vector<int> AddConstraints(const std::vector<ConstraintSpec>& specs, bool rejectRedundant) override {
+		std::vector<int> out;
+		Annotation2DApi7& a = Annotation();
+		for (const ConstraintSpec& s : specs) {
+			K7::IParametriticConstraintPtr c = a.CreateConstraint(s);
+			if (!c) {
+				out.push_back(0);
+				continue;
+			}
+			if (rejectRedundant && sketch7 && (int)sketch7->ConstraintsState == (int)SketchDefinition::Redundant) {
+				c->Delete();
+				out.push_back(-1);
+				continue;
+			}
+			out.push_back(1);
+		}
+		return out;
 	}
 
 	SketchDefinition GetDefinition() override {
@@ -282,6 +306,7 @@ public :
 		}
 		doc2D = nullptr;
 		view7 = nullptr;
+		annotation.reset();
 	}
 	bool IsEdit() override { return (bool) doc2D; }
 	void Clear() override {

@@ -115,4 +115,23 @@ public:
 		K5::ksFeaturePtr feature = entity->GetFeature();
 		return feature ? (int)feature->objectError : 0;
 	}
+	std::vector<std::string> GetSubFeatureNames() const override {
+		// IFeature7::SubFeatures в v23 пуст; эскиз операции отдаёт её определение — GetSketch есть у
+		// выдавливания, выреза, вращения, ребра и др. Вызов по имени через IDispatch
+		// У эскиза так же GetPlane отдаёт его плоскость
+		std::vector<std::string> out;
+		if (!def) return out;
+		for (const wchar_t* name : {L"GetSketch", L"GetPlane"}) {
+			OLECHAR* method = const_cast<OLECHAR*>(name);
+			DISPID id = 0;
+			if (FAILED(def->GetIDsOfNames(IID_NULL, &method, 1, LOCALE_USER_DEFAULT, &id))) continue;
+			DISPPARAMS none{nullptr, nullptr, 0, 0};
+			_variant_t result;
+			if (FAILED(def->Invoke(id, IID_NULL, LOCALE_USER_DEFAULT, DISPATCH_METHOD, &none, &result, nullptr, nullptr))) continue;
+			if (result.vt == VT_DISPATCH && result.pdispVal) {
+				if (K5::ksEntityPtr entity = result.pdispVal) out.push_back(BstrToUtf8(entity->name));
+			}
+		}
+		return out;
+	}
 };

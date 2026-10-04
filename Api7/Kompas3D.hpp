@@ -6,6 +6,23 @@
 #include "../Include/Kompas3D.h"
 #include "Doc3D.hpp"
 #include "Drawing.hpp"
+#include "Specification.hpp"
+
+// Сборка: компонент, чья грань видна в точке вида (IAssociationView::FindFace → IModelObject::Part)
+inline std::vector<std::string> DrawingApi7::ComponentsAt(long number, const std::vector<std::array<double, 2>>& points, Doc3D& model3d) {
+	std::vector<std::string> out(points.size());
+	K7::IAssociationViewPtr assoc = FindView(number);
+	auto* impl = dynamic_cast<Doc3DApi7*>(model3d.doc.get());
+	K7::IKompasDocument3DPtr model = impl && impl->Document() ? ToApi7<K7::IKompasDocument3DPtr>(impl->Document()) : nullptr;
+	if (!assoc || !model) return out;
+	for (size_t k = 0; k < points.size(); ++k) {
+		K7::IModelObjectPtr face = assoc->FindFace(points[k][0], points[k][1], model);
+		if (!face) continue;
+		K7::IPart7Ptr part = face->Part;
+		if (part) out[k] = BstrToUtf8(part->FileName);
+	}
+	return out;
+}
 #include "Panel.hpp"
 
 class KompasObjectNotifyLoc : public ComEvent {
@@ -185,6 +202,14 @@ public:
 		K7::IKompasDocument2DPtr d = docs ? docs->Add(KConst::ksDocumentDrawing, visible ? VARIANT_TRUE : VARIANT_FALSE) : nullptr;
 		if (!d) throw Kompas3DException("Не могу создать чертёж");
 		return Drawing(std::make_unique<DrawingApi7>(d));
+	}
+
+	Specification NewSpecification(bool visible) override {
+		if (!ComEvent::kompas7) return Specification();
+		K7::IDocumentsPtr docs = ComEvent::kompas7->Documents;
+		K7::IKompasDocumentPtr d = docs ? docs->Add(KConst::ksDocumentSpecification, visible ? VARIANT_TRUE : VARIANT_FALSE) : nullptr;
+		if (!d) throw Kompas3DException("Не могу создать спецификацию");
+		return Specification(std::make_unique<SpecificationApi7>(d));
 	}
 
 	Drawing GetActiveDrawing() override {

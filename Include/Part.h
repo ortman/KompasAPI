@@ -9,6 +9,7 @@
 #include <utility>
 #include <optional>
 #include <string>
+#include <variant>
 
 class Part {
 public:
@@ -49,6 +50,7 @@ public:
 		virtual std::vector<Variable> GetVariables(bool isExternal) = 0;
 		virtual void Remove(const Node& node) = 0;
 		virtual std::optional<BoundingBox> GetBoundingBox() { return std::nullopt; }
+		virtual int CheckIntersection(Part& other, bool tangent) { return -1; }
 		virtual std::optional<MassProperties> GetMassProperties() { return std::nullopt; }
 		virtual int GetBodiesCount() { return 0; }
 		virtual bool SetVariable(const std::string& name, double value) { return false; }
@@ -59,6 +61,11 @@ public:
 		virtual std::string GetFileName() { return std::string(); }
 		virtual std::string GetDesignation() { return std::string(); }
 		virtual bool SetTitle(const std::string& name, const std::string& designation) { return false; }
+		virtual std::optional<std::string> GetSystemProperty(int id) { return std::nullopt; }
+		virtual bool SetSystemProperty(int id, const std::variant<bool, double, std::string>& value) { return false; }
+		virtual bool IsStandard() { return false; }
+		virtual std::optional<std::pair<double, double>> GetHatch() { return std::nullopt; }
+		virtual bool SetHatch(double angle, double step) { return false; }
 		virtual bool IsFixed() { return false; }
 		virtual void SetFixed(bool fixed) {}
 		virtual std::optional<Placement> GetPlacement() { return std::nullopt; }
@@ -104,6 +111,10 @@ public:
 	std::vector<Variable> GetVariables(bool isExternal = false) { return part->GetVariables(isExternal); }
 	// Габарит тел детали; nullopt, если тел нет
 	std::optional<BoundingBox> GetBoundingBox() { return part->GetBoundingBox(); }
+	// Пересечение тел двух компонентов сборки (IBody7::CheckIntersectionWithBody, КОМПАС v23):
+	// 0 — нет; 1 — касание в точке, 2 — по линии, 3 — по поверхности (при tangent); 4 — общий объём;
+	// -1 — проверить нельзя
+	int CheckIntersection(Part& other, bool tangent = false) { return part->CheckIntersection(other, tangent); }
 	// МЦХ: масса в кг, длины в мм
 	std::optional<MassProperties> GetMassProperties() { return part->GetMassProperties(); }
 	int GetBodiesCount() { return part->GetBodiesCount(); }
@@ -123,6 +134,15 @@ public:
 	// Наименование и обозначение детали; пустая строка — не менять. Проверяется чтением
 	bool SetTitle(const std::string& name, const std::string& designation) { return part->SetTitle(name, designation); }
 	bool IsFixed() { return part->IsFixed(); }
+	// Системные свойства компонента (SystemPropertyType): 4 — обозначение, 5 — наименование,
+	// 15 — позиция, 50 — «Рассекать на разрезах»… Значение — строкой; задать — с проверкой чтением
+	std::optional<std::string> GetSystemProperty(int id) { return part->GetSystemProperty(id); }
+	bool SetSystemProperty(int id, const std::variant<bool, double, std::string>& value) { return part->SetSystemProperty(id, value); }
+	// Стандартное изделие (из библиотеки)
+	bool IsStandard() { return part->IsStandard(); }
+	// Штриховка компонента в разрезах чертежа: угол наклона и шаг, мм
+	std::optional<std::pair<double, double>> GetHatch() { return part->GetHatch(); }
+	bool SetHatch(double angle, double step) { return part->SetHatch(angle, step); }
 	Part& SetFixed(bool fixed) { part->SetFixed(fixed); return *this; }
 	std::optional<Placement> GetPlacement() { return part->GetPlacement(); }
 	bool SetPlacement(const Placement& placement) { return part->SetPlacement(placement); }

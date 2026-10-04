@@ -126,7 +126,8 @@ public:
 	class RibImpl : virtual public Node::NodeImpl {
 	public:
 		virtual void SetSketch(Sketch& sketch) = 0;
-		// side: 0 — в плоскости эскиза, 1 — перпендикулярно (ksRibDefinition::side)
+		// side (ksRibDefinition::side): 0/1 — в плоскости эскиза, прямое/обратное направление;
+		// 2/3 — перпендикулярно эскизу, прямое/обратное
 		virtual void SetParams(double thickness, int side) = 0;
 	};
 

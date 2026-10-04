@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+class Doc3D;   // модель вида (Doc3D.h)
+
 // Чертёж КОМПАС (.cdw): лист с основной надписью и ассоциативные виды 3D-модели.
 // Координаты на листе — в миллиметрах, начало в левом нижнем углу листа.
 class Drawing {
@@ -83,6 +85,10 @@ public:
 		virtual View AddSection(SectionParams& params) { return View(); }
 		virtual bool Update() { return false; }
 		virtual std::vector<SketchItem> GetViewItems(long number) { return {}; }
+		virtual std::vector<std::vector<double>> GetCutLines(long number) { return {}; }
+		virtual std::vector<std::string> ComponentsAt(long number, const std::vector<std::array<double, 2>>& points, Doc3D& model) { return {}; }
+		virtual long AddPositionLeader(long number, double x, double y, double shelfX, double shelfY, const std::string& text, bool shelfRight) { return 0; }
+		virtual int DeletePositionLeaders(long number) { return 0; }
 		virtual DimensionInfo AddDimension(long number, const Dimension2D& dimension) { return DimensionInfo(); }
 		virtual bool DeleteViewObject(long number, long ref) { return false; }
 		virtual std::vector<DimensionRead> GetDimensions(long number) { return {}; }
@@ -127,6 +133,18 @@ public:
 	View AddSection(SectionParams& params) { return impl->AddSection(params); }
 	// Объекты вида (линии проекции и т. п.) в координатах вида: мм модели, без масштаба вида
 	std::vector<SketchItem> GetViewItems(long number) { return impl->GetViewItems(number); }
+	// Линии разреза на виде: точки x0, y0, x1, y1… в координатах вида
+	std::vector<std::vector<double>> GetCutLines(long number) { return impl->GetCutLines(number); }
+	// Сборка: файл компонента, чья грань видна в каждой точке вида (координаты вида), или пусто;
+	// model — открытая модель вида
+	std::vector<std::string> ComponentsAt(long number, const std::vector<std::array<double, 2>>& points, Doc3D& model) {
+		return impl->ComponentsAt(number, points, model);
+	}
+	// Позиционная линия-выноска: точка на детали (x, y), начало полки, номер позиции (координаты вида)
+	long AddPositionLeader(long number, double x, double y, double shelfX, double shelfY, const std::string& text, bool shelfRight) {
+		return impl->AddPositionLeader(number, x, y, shelfX, shelfY, text, shelfRight);
+	}
+	int DeletePositionLeaders(long number) { return impl->DeletePositionLeaders(number); }
 	// Размер в виде (координаты вида), привязанный к его линиям; на чертеже — не управляющий
 	DimensionInfo AddDimension(long number, const Dimension2D& dimension) { return impl->AddDimension(number, dimension); }
 	// Удалить объект вида (например, размер); false — не найден

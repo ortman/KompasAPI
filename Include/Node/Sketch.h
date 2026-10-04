@@ -28,6 +28,7 @@ public:
 		virtual long LastObject() { return 0; }
 		virtual bool Parametrize(const std::vector<long>& refs, const Parametrize2D& options) { return false; }
 		virtual bool AddConstraint(Constraint2D type, long a, int pointA, long b, int pointB) { return false; }
+		virtual std::vector<int> AddConstraints(const std::vector<ConstraintSpec>& specs, bool rejectRedundant) { return std::vector<int>(specs.size(), 0); }
 		virtual DimensionInfo AddDimension(const Dimension2D& dimension) { return DimensionInfo(); }
 		virtual ObjectDefinition GetObjectDefinition(long ref) { return ObjectDefinition::Unknown; }
 		virtual std::vector<long> Project(const Node& modelObject) { return {}; }
@@ -121,6 +122,12 @@ public:
 		return sketch && sketch->AddConstraint(type, a, pointA, b, pointB);
 	}
 	// Размер, привязанный к геометрии эскиза (точки размера должны совпадать с её точками)
+	// Пакет ограничений в одном сеансе: по каждому 1 — создано, 0 — не создано, -1 — отменено,
+	// потому что сделало эскиз переопределённым (rejectRedundant)
+	std::vector<int> AddConstraints(const std::vector<ConstraintSpec>& specs, bool rejectRedundant = true) {
+		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
+		return sketch ? sketch->AddConstraints(specs, rejectRedundant) : std::vector<int>(specs.size(), 0);
+	}
 	DimensionInfo AddDimension(const Dimension2D& dimension) {
 		SketchImpl* sketch = dynamic_cast<SketchImpl*>(node.get());
 		return sketch ? sketch->AddDimension(dimension) : DimensionInfo();
