@@ -45,7 +45,8 @@ enum class LineStyle : int {
 //   Rect       x y width height angle
 //   Polygon    xc yc r count describe angle
 struct SketchItem {
-	// Dimension — размер (линейный, угловой, Ø, R…); Other — прочие объекты (сплайны, текст…)
+	// Dimension — размер (линейный, угловой, Ø, R…; v[0] = 1 — управляющий, 0 — информационный);
+	// Other — прочие объекты (сплайны, текст…)
 	enum class Kind { Line, Circle, Arc, Point, Ellipse, EllipseArc, Rect, Polygon, Dimension, Other };
 	Kind kind = Kind::Other;
 	LineStyle style = LineStyle::Main;

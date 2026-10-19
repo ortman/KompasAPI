@@ -93,6 +93,7 @@ public:
 		virtual bool DeleteViewObject(long number, long ref) { return false; }
 		virtual std::vector<DimensionRead> GetDimensions(long number) { return {}; }
 		virtual bool SetTolerance(long number, long ref, const DimensionTolerance& t) { return false; }
+		virtual bool EditDimension(long number, long ref, const DimensionEdit& e) { return false; }
 		virtual long AddRough(long number, const Rough2D& rough) { return 0; }
 		virtual std::map<int, std::string> GetStamp(const std::vector<int>& cells) { return {}; }
 		virtual int SetStamp(const std::map<int, std::string>& cells) { return 0; }
@@ -153,6 +154,8 @@ public:
 	std::vector<DimensionRead> GetDimensions(long number) { return impl->GetDimensions(number); }
 	// Квалитет и/или предельные отклонения размера вида
 	bool SetTolerance(long number, long ref, const DimensionTolerance& t) { return impl->SetTolerance(number, ref, t); }
+	// Правка размера вида: текст, положение размерной линии и надписи
+	bool EditDimension(long number, long ref, const DimensionEdit& e) { return impl->EditDimension(number, ref, e); }
 	// Знак шероховатости на линии вида; ссылка на знак или 0
 	long AddRough(long number, const Rough2D& rough) { return impl->AddRough(number, rough); }
 	// Основная надпись: тексты ячеек по номерам КОМПАСа (1 — наименование, 2 — обозначение,

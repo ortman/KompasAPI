@@ -255,9 +255,13 @@ public:
 					style(o->Style);
 					break;
 				}
-				case 9: case 10: case 13: case 14: case 15: case 38: case 39: case 40: case 43:   // размеры
+				case 9: case 10: case 13: case 14: case 15: case 38: case 39: case 40: case 43: {   // размеры
 					it.kind = SketchItem::Kind::Dimension;
+					// v[0]: 1 — управляющий («размер с переменной» и фиксированный), 0 — информационный
+					const auto list = Constraints(K7::IDrawingObject1Ptr(item));
+					it.v = {Has(list, KConst::ksCDimWithVariable) && Has(list, KConst::ksCFixedDim) ? 1.0 : 0.0};
 					break;
+				}
 				default:
 					break;
 			}
@@ -313,6 +317,24 @@ public:
 				if (K7::ITextLinePtr p = text->LowDeviation) d.lower = BstrToUtf8(p->Str);
 				d.deviations = text->DeviationOn == VARIANT_TRUE || !d.upper.empty() || !d.lower.empty();
 			}
+			auto circleOf = [&](K7::IDrawingObjectPtr base) {
+				if (K7::ICirclePtr c = base) {
+					d.points[0] = c->Xc;
+					d.points[1] = c->Yc;
+					d.points[2] = c->Radius;
+				} else if (K7::IArcPtr a = base) {
+					d.points[0] = a->Xc;
+					d.points[1] = a->Yc;
+					d.points[2] = a->Radius;
+				}
+			};
+			if (K7::IDiametralDimensionPtr dia = item) {
+				circleOf(dia->BaseObject);
+				d.points[4] = dia->Angle;
+			} else if (K7::IRadialDimensionPtr rad = item) {
+				circleOf(rad->BaseObject);
+				d.points[4] = rad->Angle;
+			}
 			if (K7::ILineDimensionPtr line = item) {
 				d.orientation = (int)line->Orientation;
 				d.points[0] = line->X1;
@@ -351,6 +373,53 @@ public:
 			}
 		}
 		return out;
+	}
+
+	// Правка готового размера: текст, положение размерной линии и надписи
+	bool Edit(long ref, const DimensionEdit& e) {
+		K7::IDrawingObject1Ptr obj = Object(ref);
+		if (!obj) return false;
+		if (K7::IDimensionTextPtr text = obj) {
+			if (e.prefix) {
+				if (K7::ITextLinePtr line = text->Prefix) line->Str = Utf8ToBstr(*e.prefix);
+			}
+			if (e.suffix) {
+				if (K7::ITextLinePtr line = text->Suffix) line->Str = Utf8ToBstr(*e.suffix);
+			}
+			if (e.text) {
+				if (e.text->empty()) {
+					text->AutoNominalValue = VARIANT_TRUE;
+				} else {
+					text->AutoNominalValue = VARIANT_FALSE;
+					if (K7::ITextLinePtr line = text->NominalText) line->Str = Utf8ToBstr(*e.text);
+				}
+			}
+			if (e.under) {
+				K7::ITextPtr under = text->TextUnder;
+				if (under) {
+					under->Clear();
+					if (!e.under->empty()) {
+						if (K7::ITextLinePtr line = under->Add()) WriteSpecial(line, *e.under);
+					}
+				}
+			}
+		}
+		if (e.linePoint) {
+			if (K7::ILineDimensionPtr line = obj) {
+				line->X3 = (*e.linePoint)[0];
+				line->Y3 = (*e.linePoint)[1];
+			}
+		}
+		if (e.angle) {
+			if (K7::IDiametralDimensionPtr dia = obj) dia->Angle = *e.angle;
+			else if (K7::IRadialDimensionPtr rad = obj) rad->Angle = *e.angle;
+		}
+		K7::IDrawingObjectPtr(obj)->Update();
+		if (e.textAt) {
+			K7::IDimension2DPtr dim2 = obj;
+			if (dim2 && dim2->SetTextPosition((*e.textAt)[0], (*e.textAt)[1])) K7::IDrawingObjectPtr(obj)->Update();
+		}
+		return true;
 	}
 
 	// Допуск размера: квалитет и/или отклонения; проверяется чтением
@@ -455,6 +524,36 @@ public:
 		return c->Create() == VARIANT_TRUE;
 	}
 
+	// Строка текста: Ø и × — спецзнаками (2 и 4): шрифт ГОСТ читает строку в CP1251 и покажет «Ш», «Ч»
+	static void WriteSpecial(K7::ITextLinePtr line, const std::string& s) {
+		static const std::pair<std::string, long> kSymbols[] = {{"Ø", 2}, {"×", 4}};
+		std::string part;
+		auto flush = [&]() {
+			if (part.empty()) return;
+			K7::ITextItemPtr item = line->Add();
+			item->ItemType = KConst::ksTItString;
+			item->Str = Utf8ToBstr(part);
+			item->Update();
+			part.clear();
+		};
+		for (size_t pos = 0; pos < s.size();) {
+			bool symbol = false;
+			for (const auto& [sym, number] : kSymbols) {
+				if (s.compare(pos, sym.size(), sym) != 0) continue;
+				flush();
+				K7::ITextItemPtr item = line->Add();
+				item->ItemType = KConst::ksTItSpecialSymbol;
+				item->Number = number;
+				item->Update();
+				pos += sym.size();
+				symbol = true;
+				break;
+			}
+			if (!symbol) part += s[pos++];
+		}
+		flush();
+	}
+
 	// Свой текст размера: приставка и/или замена значения (обозначение резьбы — без знака Ø)
 	static void ApplyText(IDispatch* dimension, const Dimension2D& d) {
 		if (d.text.empty() && d.prefix.empty() && d.suffix.empty() && d.under.empty() && d.sign < 0) return;
@@ -469,37 +568,9 @@ public:
 			if (suffix) suffix->Str = Utf8ToBstr(d.suffix);
 		}
 		if (!d.under.empty()) {
-			// Шрифт ГОСТ читает строку в CP1251: Ø и × — спецзнаками (2 и 4), иначе «Ш», «Ч»
 			K7::ITextPtr under = text->TextUnder;
 			K7::ITextLinePtr line = under ? (under->Clear(), under->Add()) : nullptr;
-			if (line) {
-				static const std::pair<std::string, long> kSymbols[] = {{"Ø", 2}, {"×", 4}};
-				std::string part;
-				auto flush = [&]() {
-					if (part.empty()) return;
-					K7::ITextItemPtr item = line->Add();
-					item->ItemType = KConst::ksTItString;
-					item->Str = Utf8ToBstr(part);
-					item->Update();
-					part.clear();
-				};
-				for (size_t pos = 0; pos < d.under.size();) {
-					bool symbol = false;
-					for (const auto& [sym, number] : kSymbols) {
-						if (d.under.compare(pos, sym.size(), sym) != 0) continue;
-						flush();
-						K7::ITextItemPtr item = line->Add();
-						item->ItemType = KConst::ksTItSpecialSymbol;
-						item->Number = number;
-						item->Update();
-						pos += sym.size();
-						symbol = true;
-						break;
-					}
-					if (!symbol) part += d.under[pos++];
-				}
-				flush();
-			}
+			if (line) WriteSpecial(line, d.under);
 		}
 		if (!d.text.empty()) {
 			text->AutoNominalValue = VARIANT_FALSE;
@@ -530,8 +601,25 @@ public:
 			dim->Xc = d.x1;
 			dim->Yc = d.y1;
 			dim->Radius = d.offset;
+			if (d.rays) {
+				// Сектор КОМПАС выбирает по точке на дуге размера (X3, Y3): ставим её на биссектрису
+				// между лучами (Angle1/Angle2 он берёт из направлений отрезков)
+				const double r1 = (*d.rays)[0] * 3.14159265358979323846 / 180, r2 = (*d.rays)[1] * 3.14159265358979323846 / 180;
+				double bx = std::cos(r1) + std::cos(r2), by = std::sin(r1) + std::sin(r2);
+				const double len = std::hypot(bx, by);
+				if (len < 1e-9) {   // лучи навстречу — перпендикуляр
+					bx = -std::sin(r1);
+					by = std::cos(r1);
+				} else {
+					bx /= len;
+					by /= len;
+				}
+				dim->X3 = d.x1 + bx * d.offset;
+				dim->Y3 = d.y1 + by * d.offset;
+				dim->DimensionType = (KConst::ksAngleDimTypeEnum)d.angleType;   // ksADMinAngle, ksADMaxAngle, ksADMoreAngle
+			}
 			ApplyText(dim, d);
-			if (!dim->Update()) return info;
+			if (!dim->Update() && !ReferenceOf(dim)) return info;   // Update() ненадёжен: размер мог создаться
 			obj = dim;
 			obj->Associate();
 			info.associated = Attached(obj);
@@ -548,7 +636,7 @@ public:
 				dim->Angle = d.angle;
 				ApplyText(dim, d);
 				ApplyShelf(dim, d.shelf);
-				if (!dim->Update()) return info;
+				if (!dim->Update() && !ReferenceOf(dim)) return info;   // Update() ненадёжен: размер мог создаться
 				obj = dim;
 			} else {
 				K7::IRadialDimensionPtr dim = Symbols()->RadialDimensions->Add();
@@ -556,7 +644,7 @@ public:
 				dim->Angle = d.angle;
 				ApplyText(dim, d);
 				ApplyShelf(dim, d.shelf);
-				if (!dim->Update()) return info;
+				if (!dim->Update() && !ReferenceOf(dim)) return info;   // Update() ненадёжен: размер мог создаться
 				obj = dim;
 			}
 			if (d.textAt) {
@@ -587,7 +675,7 @@ public:
 				dim->Orientation = KConst::ksLinDParallel;
 			}
 			ApplyText(dim, d);
-			if (!dim->Update()) return info;
+			if (!dim->Update() && !ReferenceOf(dim)) return info;   // Update() ненадёжен: размер мог создаться
 			obj = dim;
 			if (d.textAt) {
 				K7::IDimension2DPtr dim2 = obj;

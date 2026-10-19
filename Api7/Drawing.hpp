@@ -383,6 +383,10 @@ public:
 		return Annotation2DApi7(Doc5(), FindView(number)).Tolerance(ref, t);
 	}
 
+	bool EditDimension(long number, long ref, const DimensionEdit& e) override {
+		return Annotation2DApi7(Doc5(), FindView(number)).Edit(ref, e);
+	}
+
 	long AddRough(long number, const Rough2D& rough) override {
 		return Annotation2DApi7(Doc5(), FindView(number)).Rough(rough);
 	}

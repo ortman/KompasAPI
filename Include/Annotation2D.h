@@ -1,6 +1,7 @@
 #ifndef _KompasAPI_Annotation2D_h_
 #define _KompasAPI_Annotation2D_h_
 
+#include <array>
 #include <optional>
 #include <string>
 #include <vector>
@@ -75,6 +76,9 @@ struct Dimension2D {
 	int sign = -1;              // значок перед номиналом (IDimensionText::Sign): 1 — Ø у линейного размера; -1 — как есть
 	bool textAt = false;        // Ø/R: надпись в точке textX, textY (иначе КОМПАС ставит сам у окружности)
 	double textX = 0, textY = 0;
+	// Угловой: лучи от вершины (градусы) — сектор между ними (точка дуги на биссектрисе); нет — как выберет КОМПАС
+	std::optional<std::array<double, 2>> rays;
+	int angleType = 0;          // угловой: 0 — острый (меньший) угол между прямыми, 1 — тупой, 2 — больше 180°
 };
 
 struct DimensionInfo {
@@ -104,9 +108,19 @@ struct DimensionRead {
 	bool deviations = false;
 	std::string upper, lower;           // тексты отклонений в надписи («+0,015», «-0,1»)
 	int orientation = -1;               // линейный: ksLineDimensionOrientationEnum (1 — горизонтальный, 2 — вертикальный)
-	double points[6] = {0, 0, 0, 0, 0, 0}; // линейный: x1, y1, x2, y2 и точка размерной линии x3, y3 (координаты вида)
+	double points[6] = {0, 0, 0, 0, 0, 0}; // линейный: x1, y1, x2, y2 и точка размерной линии x3, y3 (координаты вида);
+	                                    // Ø/R: центр x, y и радиус окружности, points[4] — угол размерной линии
 	bool hasBox = false;                // габарит размера (с выносными линиями и надписью)
 	double box[4] = {0, 0, 0, 0};       // xmin, ymin, xmax, ymax — координаты листа
+};
+
+// Правка готового размера: заданные поля меняются, пустая строка — очистить
+struct DimensionEdit {
+	std::optional<std::string> prefix, suffix, under;
+	std::optional<std::string> text;              // свой текст вместо номинала; пусто — снова номинал
+	std::optional<std::array<double, 2>> linePoint;   // линейный: точка размерной линии (координаты вида)
+	std::optional<double> angle;                  // Ø/R: угол размерной линии, градусы
+	std::optional<std::array<double, 2>> textAt;  // положение надписи (координаты вида)
 };
 
 // Обозначение шероховатости поверхности: знак на линии вида (object) в точке x, y
