@@ -67,11 +67,43 @@ public :
 		K5::ksEntityPtr face = ThreadDef()->GetBaseObject();
 		return face ? std::make_unique<FaceApi7>(face, nullptr) : nullptr;
 	}
-	// Начальная и конечная границы резьбы — грани-торцы (не рёбра)
+	// Начальная и конечная границы резьбы — обычно грани-торцы (не рёбра): у торца берём
+	// ребро, общее с цилиндрической гранью резьбы. nullptr — такого ребра нет
 	std::unique_ptr<Node::NodeImpl> GetEdge(bool begin) override {
 		K5::ksThreadDefinitionPtr d = ThreadDef();
-		K5::ksEntityPtr edge = begin ? d->GetFaceBegin() : d->GetFaceEnd();
-		if (!edge) throw Kompas3DException("Не могу получить ребро условного изображения резьбы");
-		return std::make_unique<EdgeApi7>(edge, nullptr);
+		K5::ksEntityPtr bound = begin ? d->GetFaceBegin() : d->GetFaceEnd();
+		if (!bound) throw Kompas3DException("Не могу получить ребро условного изображения резьбы");
+		IDispatchPtr boundDef = bound->GetDefinition();
+		if (K5::ksEdgeDefinitionPtr edge = boundDef) return std::make_unique<EdgeApi7>(bound, edge);
+		K5::ksFaceDefinitionPtr face = boundDef;
+		if (!face) return nullptr;
+		std::optional<Face::Cylinder> cylinder;
+		if (K5::ksEntityPtr base = d->GetBaseObject()) cylinder = FaceApi7(base, nullptr).GetCylinder();
+		K5::ksEdgeCollectionPtr edges = face->EdgeCollection();
+		int count = edges ? edges->GetCount() : 0;
+		for (int i = 0; i < count; ++i) {
+			K5::ksEdgeDefinitionPtr edge = edges->GetByIndex(i);
+			if (!edge || !(edge->IsCircle() || edge->IsArc())) continue;
+			K5::ksFaceDefinitionPtr left = edge->GetAdjacentFace(true);
+			K5::ksFaceDefinitionPtr right = edge->GetAdjacentFace(false);
+			if (!(left && left->IsCylinder()) && !(right && right->IsCylinder())) continue;
+			auto result = std::make_unique<EdgeApi7>(edge->GetEntity(), edge);
+			if (cylinder && !OnCylinder(*result, *cylinder)) continue;
+			return result;
+		}
+		return nullptr;
+	}
+
+private:
+	// Окружность ребра лежит на цилиндре: тот же радиус и центр на оси
+	static bool OnCylinder(EdgeApi7& edge, const Face::Cylinder& c) {
+		const double tol = 1e-3;
+		std::optional<double> r = edge.GetRadius();
+		if (!r || std::abs(*r - c.radius) > tol) return false;
+		Vertex::Point3D o = edge.GetOrigin();
+		Vertex::Point3D v{o.x - c.origin.x, o.y - c.origin.y, o.z - c.origin.z};
+		Vertex::Point3D a = c.axis;
+		double cx = v.y * a.z - v.z * a.y, cy = v.z * a.x - v.x * a.z, cz = v.x * a.y - v.y * a.x;
+		return std::sqrt(cx * cx + cy * cy + cz * cz) <= tol;
 	}
 };
