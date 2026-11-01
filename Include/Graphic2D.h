@@ -1,6 +1,7 @@
 #ifndef _KompasAPI_Graphic2D_h_
 #define _KompasAPI_Graphic2D_h_
 
+#include <string>
 #include <vector>
 
 // Геометрия 2D-документа (эскиз, вид чертежа): стили линий и описание объектов
@@ -44,6 +45,8 @@ enum class LineStyle : int {
 //   EllipseArc xc yc a b angle angle1 angle2 dir
 //   Rect       x y width height angle
 //   Polygon    xc yc r count describe angle
+//   Dimension  type value, далее: линейный (type 9) x1 y1 x2 y2; угловой (10) xc yc;
+//              Ø (13) и R (14) xc yc r. type — DrawingObjectType
 struct SketchItem {
 	// Dimension — размер (линейный, угловой, Ø, R…); Other — прочие объекты (сплайны, текст…)
 	enum class Kind { Line, Circle, Arc, Point, Ellipse, EllipseArc, Rect, Polygon, Dimension, Other };
@@ -51,6 +54,7 @@ struct SketchItem {
 	LineStyle style = LineStyle::Main;
 	std::vector<double> v;
 	long ref = 0;   // ссылка на объект в эскизе (для ограничений и размеров)
+	std::string variable;   // управляющий размер: переменная эскиза («v26»)
 };
 
 #endif

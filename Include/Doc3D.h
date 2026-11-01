@@ -120,6 +120,16 @@ public:
 		bool hideConstruction = true;   // скрыть плоскости, оси и эскизы на время снимка
 	};
 
+	// Исполнение модели. Индексы — порядок КОМПАСа (базовое исполнение бывает не первым)
+	struct Embodiment {
+		int index = 0;
+		std::string marking;   // обозначение: у базового — полное («АБВГ.123456.001»), у прочих — номер («-01»)
+		bool current = false;
+		bool base = false;     // верхнее (базовое) исполнение
+		int parent = -1;       // индекс родителя; -1 — у базового
+		int children = 0;
+	};
+
 	struct ExportParams {
 		Format format;
 		bool objBody;
@@ -160,6 +170,9 @@ public:
 		virtual std::string GetEmbodimentName(int i) { return std::string(); }
 		virtual Part GetEmbodiment(int i) { return Part(); }
 		virtual bool SetCurrentEmbodiment(int i) { return false; }
+		virtual std::vector<Embodiment> GetEmbodiments() { return {}; }
+		virtual bool AddEmbodiment(int parent, bool dependent, const std::string& number) { return false; }
+		virtual bool DeleteEmbodiment(int i) { return false; }
 		virtual bool AddMateConstraint(MateType type, const Node& object1, const Node& object2,
 		                               MateDir direction, MateFixed fixed, double value) { return false; }
 		virtual Part AddPart(const Part& part, const std::optional<std::string>& filePath) { return Part(); }
@@ -202,6 +215,13 @@ public:
 	std::string GetEmbodimentName(int i) { return doc->GetEmbodimentName(i); }
 	Part GetEmbodiment(int i) { return doc->GetEmbodiment(i); }
 	bool SetCurrentEmbodiment(int i) { return doc->SetCurrentEmbodiment(i); }
+	// Все исполнения; у модели без исполнений — одно базовое
+	std::vector<Embodiment> GetEmbodiments() { return doc->GetEmbodiments(); }
+	// Новое исполнение — потомок исполнения parent (индекс), номер «01» → обозначение «-01».
+	// dependent — зависимое: следует за изменениями родителя. Новое становится текущим
+	bool AddEmbodiment(int parent, bool dependent, const std::string& number) { return doc->AddEmbodiment(parent, dependent, number); }
+	// КОМПАС не удаляет текущее исполнение и исполнение с потомками
+	bool DeleteEmbodiment(int i) { return doc->DeleteEmbodiment(i); }
 	operator bool() const { return (bool)doc; }
 	bool AddMateConstraint(MateType type, const Node& object1, const Node& object2,
 	                       MateDir direction, MateFixed fixed = MateFixedNone, double value = 0.0) {

@@ -201,9 +201,20 @@ public:
 					style(o->Style);
 					break;
 				}
-				case 9: case 10: case 13: case 14: case 15: case 38: case 39: case 40: case 43:   // размеры
+				case 9: case 10: case 13: case 14: case 15: case 38: case 39: case 40: case 43: {   // размеры
 					it.kind = SketchItem::Kind::Dimension;
+					const int type = (int)object->DrawingObjectType;
+					K7::IDimensionTextPtr text = item;
+					it.v = {(double)type, text ? text->NominalValue : 0.0};
+					if (K7::ILineDimensionPtr d = item) it.v.insert(it.v.end(), {d->X1, d->Y1, d->X2, d->Y2});
+					else if (K7::IAngleDimensionPtr d = item) it.v.insert(it.v.end(), {d->Xc, d->Yc});
+					else if (K7::IDiametralDimensionPtr d = item) it.v.insert(it.v.end(), {d->Xc, d->Yc, d->Radius});
+					else if (K7::IRadialDimensionPtr d = item) it.v.insert(it.v.end(), {d->Xc, d->Yc, d->Radius});
+					for (const auto& c : Constraints(K7::IDrawingObject1Ptr(item))) {
+						if (c.first == KConst::ksCDimWithVariable) it.variable = BstrToUtf8(c.second->Variable);
+					}
 					break;
+				}
 				default:
 					break;
 			}

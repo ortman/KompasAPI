@@ -257,6 +257,55 @@ public:
 		}
 		return false;
 	}
+
+	// Проверено на v24: базовое исполнение в списке последнее, у прямых потомков базового
+	// IEmbodiment::Owner пуст; обозначения исполнений в документе различаются
+	std::vector<Doc3D::Embodiment> GetEmbodiments() override {
+		std::vector<Doc3D::Embodiment> list;
+		K7::IEmbodimentsManagerPtr em = ToApi7<K7::IEmbodimentsManagerPtr>(doc);
+		if (!em) return list;
+		const long count = em->EmbodimentCount;
+		K7::IEmbodimentPtr top = em->TopEmbodiment;
+		const std::string topMarking = top ? BstrToUtf8(top->GetMarking(KConst::ksVMFullMarking, VARIANT_FALSE)) : std::string();
+		int baseIndex = -1;
+		for (long i = 0; i < count; ++i) {
+			K7::IEmbodimentPtr e = em->Embodiment[_variant_t(i)];
+			if (!e) continue;
+			Doc3D::Embodiment item;
+			item.index = (int)i;
+			item.marking = BstrToUtf8(em->GetEmbodimentMarking(i, KConst::ksVMFullMarking, VARIANT_FALSE));
+			item.current = e->IsCurrent != VARIANT_FALSE;
+			item.children = (int)e->EmbodimentsCount;
+			item.base = item.marking == topMarking;
+			if (item.base) baseIndex = (int)i;
+			list.push_back(item);
+		}
+		for (Doc3D::Embodiment& item : list) {
+			if (item.base) continue;
+			item.parent = baseIndex;
+			K7::IEmbodimentPtr e = em->Embodiment[_variant_t((long)item.index)];
+			K7::IEmbodimentPtr owner = e ? e->Owner : nullptr;
+			if (!owner) continue;
+			const std::string ownerMarking = BstrToUtf8(owner->GetMarking(KConst::ksVMFullMarking, VARIANT_FALSE));
+			for (const Doc3D::Embodiment& other : list) {
+				if (other.marking == ownerMarking) item.parent = other.index;
+			}
+		}
+		return list;
+	}
+
+	bool AddEmbodiment(int parent, bool dependent, const std::string& number) override {
+		K7::IEmbodimentsManagerPtr em = ToApi7<K7::IEmbodimentsManagerPtr>(doc);
+		if (!em || parent < 0 || parent >= em->EmbodimentCount) return false;
+		return em->AddEmbodiment(_variant_t((long)parent), dependent ? VARIANT_TRUE : VARIANT_FALSE, _bstr_t(L""),
+		                         Utf8ToBstr(number), _bstr_t(L"")) != VARIANT_FALSE;
+	}
+
+	bool DeleteEmbodiment(int i) override {
+		K7::IEmbodimentsManagerPtr em = ToApi7<K7::IEmbodimentsManagerPtr>(doc);
+		if (!em || i < 0 || i >= em->EmbodimentCount) return false;
+		return em->DeleteEmbodiment(_variant_t((long)i)) != VARIANT_FALSE;
+	}
 	
 	bool AddMateConstraint(MateType type, const Node& object1, const Node& object2,
 	                       MateDir direction, MateFixed fixed, double value) override {
