@@ -13,12 +13,7 @@
 
 class Part {
 public:
-	struct Variable {
-		bool isExternal;
-		double value;
-		std::string name;
-		std::string comment;
-	};
+	using Variable = ::Variable;
 	struct BoundingBox {
 		double x1, y1, z1, x2, y2, z2;   // мм
 	};
@@ -55,6 +50,13 @@ public:
 		virtual int GetBodiesCount() { return 0; }
 		virtual bool SetVariable(const std::string& name, double value) { return false; }
 		virtual bool SetVariableExpression(const std::string& name, const std::string& expression) { return false; }
+		virtual bool AddVariable(const std::string& name, double value, const std::string& comment) { return false; }
+		virtual bool RemoveVariable(const std::string& name) { return false; }
+		virtual bool SetVariableExternal(const std::string& name, bool external) { return false; }
+		virtual bool SetVariableComment(const std::string& name, const std::string& comment) { return false; }
+		virtual std::vector<std::optional<double>> Evaluate(const std::vector<std::string>& expressions) { return {}; }
+		virtual std::optional<Appearance> GetAppearance() { return std::nullopt; }
+		virtual bool SetAppearance(const Appearance& appearance) { return false; }
 		virtual bool Rebuild() { return false; }
 		virtual std::vector<Face> GetFaces() { return {}; }
 		virtual std::optional<Measurement> Measure(const Node& a, const Node& b) { return std::nullopt; }
@@ -121,6 +123,19 @@ public:
 	// Значение или выражение переменной; false — переменная не найдена
 	bool SetVariable(const std::string& name, double value) { return part->SetVariable(name, value); }
 	bool SetVariableExpression(const std::string& name, const std::string& expression) { return part->SetVariableExpression(name, expression); }
+	// Новая переменная модели; false — имя занято или недопустимо
+	bool AddVariable(const std::string& name, double value, const std::string& comment = {}) { return part->AddVariable(name, value, comment); }
+	bool RemoveVariable(const std::string& name) { return part->RemoveVariable(name); }
+	// Внешняя переменная видна в сборке и задаётся из неё
+	bool SetVariableExternal(const std::string& name, bool external) { return part->SetVariableExternal(name, external); }
+	bool SetVariableComment(const std::string& name, const std::string& comment) { return part->SetVariableComment(name, comment); }
+	// Значения выражений над переменными модели (считает КОМПАС: временные переменные и
+	// перестроение). nullopt — синтаксическая ошибка. Неизвестные имена КОМПАС создаёт сам,
+	// поэтому проверяйте их заранее
+	std::vector<std::optional<double>> Evaluate(const std::vector<std::string>& expressions) { return part->Evaluate(expressions); }
+	// Цвет и оптические свойства детали (у компонента сборки — его цвет в сборке)
+	std::optional<Appearance> GetAppearance() { return part->GetAppearance(); }
+	bool SetAppearance(const Appearance& appearance) { return part->SetAppearance(appearance); }
 	bool Rebuild() { return part->Rebuild(); }
 	// Все грани и рёбра тел детали (без повторов). Порядок стабилен, пока модель не меняется
 	std::vector<Face> GetFaces() { return part->GetFaces(); }

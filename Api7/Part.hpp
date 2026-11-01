@@ -2,6 +2,7 @@
 
 #include "../Include/Part.h"
 #include <cmath>
+#include <cstdlib>
 #include "../Include/Kompas3D.h"
 #include "Node.hpp"
 #include "Node/Vertex.hpp"
@@ -103,22 +104,17 @@ public:
 		}
 		return nodes;
 	}
+	// Переменные детали — переменные её объекта дерева (API7: с выражениями)
+	K7::IFeature7Ptr Feature7() {
+		K7::IPart7Ptr part7 = part ? ToApi7<K7::IPart7Ptr>(part) : nullptr;
+		return part7 ? part7->Owner : nullptr;
+	}
 	std::vector<Part::Variable> GetVariables(bool isExternal) {
 		std::vector<Part::Variable> variables;
-		if (!part) return variables;
-		K5::ksVariableCollectionPtr vs = part->VariableCollection();
-		if (!vs) return variables;
-		int cnt = vs->GetCount();
-		for (int i = 0; i < cnt; ++i) {
-			K5::ksVariablePtr v = vs->GetByIndex(i);
-			if (!v) continue;
-			if (isExternal && !v->external) continue;
-			variables.push_back({
-				(bool)v->external,
-				v->value,
-				BstrToUtf8(v->name),
-				Kompas3D::Cp1251ToUtf8(v->note)
-			});
+		for (K7::IVariable7Ptr v : FeatureVariables(Feature7())) {
+			Part::Variable item = ReadVariable(v);
+			if (isExternal && !item.isExternal) continue;
+			variables.push_back(std::move(item));
 		}
 		return variables;
 	}
@@ -360,28 +356,84 @@ public:
 		K5::ksBodyCollectionPtr bodies = part->BodyCollection();
 		return bodies ? (int)bodies->GetCount() : 0;
 	}
-	K5::ksVariablePtr FindVariable(const std::string& name) {
-		if (!part) return nullptr;
-		K5::ksVariableCollectionPtr vs = part->VariableCollection();
-		if (!vs) return nullptr;
-		int cnt = vs->GetCount();
-		for (int i = 0; i < cnt; ++i) {
-			K5::ksVariablePtr v = vs->GetByIndex(i);
-			if (v && BstrToUtf8(v->name) == name) return v;
-		}
-		return nullptr;
+	K7::IVariable7Ptr FindVariable(const std::string& name) {
+		return FindFeatureVariable(Feature7(), name);
 	}
 	bool SetVariable(const std::string& name, double value) override {
-		K5::ksVariablePtr v = FindVariable(name);
+		K7::IVariable7Ptr v = FindVariable(name);
 		if (!v) return false;
-		v->value = value;
+		v->Value = value;
 		return true;
 	}
 	bool SetVariableExpression(const std::string& name, const std::string& expression) override {
-		K5::ksVariablePtr v = FindVariable(name);
+		K7::IVariable7Ptr v = FindVariable(name);
 		if (!v) return false;
 		v->Expression = Utf8ToBstr(expression);
 		return true;
+	}
+	bool AddVariable(const std::string& name, double value, const std::string& comment) override {
+		K7::IPart7Ptr part7 = part ? ToApi7<K7::IPart7Ptr>(part) : nullptr;
+		if (!part7 || FindVariable(name)) return false;
+		return part7->AddVariable(Utf8ToBstr(name), value, Utf8ToBstr(comment)) != nullptr;
+	}
+	bool RemoveVariable(const std::string& name) override {
+		K7::IVariable7Ptr v = FindVariable(name);
+		return v && v->Delete() != VARIANT_FALSE;
+	}
+	bool SetVariableExternal(const std::string& name, bool external) override {
+		K7::IVariable7Ptr v = FindVariable(name);
+		if (!v) return false;
+		v->External = external ? VARIANT_TRUE : VARIANT_FALSE;
+		return (v->External != VARIANT_FALSE) == external;
+	}
+	bool SetVariableComment(const std::string& name, const std::string& comment) override {
+		K7::IVariable7Ptr v = FindVariable(name);
+		if (!v) return false;
+		v->Note = Utf8ToBstr(comment);
+		return true;
+	}
+	// Проверено на v24: значение выражения появляется только после перестроения; при
+	// синтаксической ошибке КОМПАС заменяет выражение значением («0»)
+	std::vector<std::optional<double>> Evaluate(const std::vector<std::string>& expressions) override {
+		std::vector<std::optional<double>> values(expressions.size());
+		K7::IPart7Ptr part7 = part ? ToApi7<K7::IPart7Ptr>(part) : nullptr;
+		if (!part7 || expressions.empty()) return values;
+		auto isNumber = [](const std::string& s) {
+			char* end = nullptr;
+			std::strtod(s.c_str(), &end);
+			return !s.empty() && end && *end == '\0';
+		};
+		std::vector<std::string> names;
+		for (size_t i = 0; i < expressions.size(); ++i) {
+			std::string name = "kmcp_eval" + std::to_string(i);
+			if (K7::IVariable7Ptr old = FindVariable(name)) old->Delete();
+			K7::IVariable7Ptr v = part7->AddVariable(Utf8ToBstr(name), 0.0, _bstr_t(L""));
+			if (v) v->Expression = Utf8ToBstr(expressions[i]);
+			names.push_back(v ? name : std::string());
+		}
+		part->RebuildModel();
+		for (size_t i = 0; i < expressions.size(); ++i) {
+			K7::IVariable7Ptr v = names[i].empty() ? nullptr : FindVariable(names[i]);
+			if (!v) continue;
+			const std::string now = BstrToUtf8(v->Expression);
+			if (!(isNumber(now) && !isNumber(expressions[i]))) values[i] = v->Value;
+			v->Delete();
+		}
+		return values;
+	}
+	std::optional<Appearance> GetAppearance() override {
+		K7::IColorParam7Ptr cp = part ? ToApi7<K7::IColorParam7Ptr>(part) : nullptr;
+		if (!cp) return std::nullopt;
+		return ReadAppearance(cp);
+	}
+	bool SetAppearance(const Appearance& appearance) override {
+		K7::IPart7Ptr part7 = part ? ToApi7<K7::IPart7Ptr>(part) : nullptr;
+		K7::IColorParam7Ptr cp = part7;
+		if (!cp) return false;
+		// У детали UseColor = useColorUnknown (цвет свой); у компонента сборки — делаем своим
+		if ((int)cp->UseColor != KConst3D::useColorUnknown) cp->UseColor = KConst3D::useColorOur;
+		WriteAppearance(cp, appearance);
+		return part7->Update() != VARIANT_FALSE;
 	}
 	bool Rebuild() override {
 		return part && part->RebuildModel();
