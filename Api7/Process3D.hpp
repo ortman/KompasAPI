@@ -183,6 +183,8 @@ public:
 		if (part7) {
 			part7.AddRef(); //TODO: do remove?
 			proc3D->PhantomObject = part7;
+			// После смены фантома процесс теряет панель: она пустая, события кнопок не приходят
+			if (procParam) Process()->ProcessParam = procParam;
 		}
 	}
 

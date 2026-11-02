@@ -79,7 +79,7 @@ public:
 	// Вызывается реализацией при приходе событий от КОМПАС
 	bool OnButtonClick(int buttonId) { return WhenButtonClick(buttonId); }
 	void OnControlCommand(int id);
-	void OnChangeControlValue(int id);
+	void OnChangeControlValue(int id, const std::optional<PropertyVariant>& value = std::nullopt);
 };
 
 class Panel::Tab {
@@ -124,6 +124,7 @@ protected:
 	int id = 0;
 	static inline int nextId = 1;
 	Panel::Tab* tab = NULL;
+	std::optional<PropertyVariant> eventValue;
 
 	Property(const char* name, int type, PropertyVariant val) : prop(nullptr), name(name), type(type), defaultVal(val) {
 		if (Panel::Tab::currentTab) {
@@ -144,6 +145,9 @@ public:
 	virtual ~Property() = default;
 
 	int GetId() const { return id; }
+	// Значение из последнего события изменения. Элемент, добавленный после запуска процесса,
+	// своё значение через интерфейс не отдаёт — верное значение есть только в событии
+	const std::optional<PropertyVariant>& GetEventValue() const { return eventValue; }
 	void SetName(const std::string& name) {
 		this->name = name;
 		if (prop) prop->SetName(name);
@@ -234,10 +238,11 @@ inline void Panel::OnControlCommand(int id) {
 	}
 }
 
-inline void Panel::OnChangeControlValue(int id) {
+inline void Panel::OnChangeControlValue(int id, const std::optional<PropertyVariant>& value) {
 	for (Tab* t : tabs) {
 		for (Property* p : t->props) {
 			if (p->GetId() == id) {
+				p->eventValue = value;
 				p->WhenChange();
 				return;
 			}

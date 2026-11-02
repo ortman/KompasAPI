@@ -131,7 +131,7 @@ public:
 				VARIANT& ctrl = pDispParams->rgvarg[pDispParams->cArgs - 1];
 				if (panel && ctrl.vt == VT_DISPATCH) {
 					K7::IPropertyControlPtr pCtrl = ctrl.pdispVal;
-					if (pCtrl) panel->OnChangeControlValue(pCtrl->Id);
+					if (pCtrl) panel->OnChangeControlValue(pCtrl->Id, FromVariantT(pCtrl->Value));
 				}
 				break;
 			}
