@@ -123,6 +123,7 @@ public:
 		virtual void SetCaption(const std::string& caption) = 0;
 		virtual std::unique_ptr<MateConstraint::MateConstraintImpl>
 			AddMateConstraint(MateType type, MateDir dir, MateFixed fixed, double value) = 0;
+		virtual bool ClearMateConstraints() { return false; }
 	};
 
 protected:
@@ -149,6 +150,8 @@ public:
 	Part GetPhantom();
 	MateConstraint AddMateConstraint(MateType type, Node&& object1, Node&& object2,
 	                                 MateDir direction, MateFixed fixed = MateFixedNone, double value = 0.0);
+	// Удаляет все сопряжения процесса (они временные). Объекты MateConstraint после этого недействительны
+	bool ClearMateConstraints();
 	void SetCaption(const std::string& caption);
 	bool Create() { return false; } // Панель процесса создаётся вместе с процессом
 	void Update();
@@ -190,6 +193,11 @@ inline Part KProcess3D::GetPhantom() {
 
 inline void KProcess3D::SetCaption(const std::string& caption) {
 	if (Process3DImpl* proc = Proc()) proc->SetCaption(caption);
+}
+
+inline bool KProcess3D::ClearMateConstraints() {
+	Process3DImpl* proc = Proc();
+	return proc ? proc->ClearMateConstraints() : false;
 }
 
 inline void KProcess3D::Update() {

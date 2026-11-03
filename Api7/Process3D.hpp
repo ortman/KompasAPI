@@ -220,4 +220,10 @@ public:
 		mate->ParamValue = value;
 		return std::make_unique<MateConstraintApi7>(mate);
 	}
+
+	bool ClearMateConstraints() override {
+		if (!proc3D) return false;
+		K7::IMateConstraints3DPtr mates = proc3D->MateConstraints;
+		return mates && mates->DeleteTemporaryMateConstraints();
+	}
 };
