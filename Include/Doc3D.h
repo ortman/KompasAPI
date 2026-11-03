@@ -180,6 +180,7 @@ public:
 		virtual bool AddMateConstraint(MateType type, const Node& object1, const Node& object2,
 		                               MateDir direction, MateFixed fixed, double value) { return false; }
 		virtual Part AddPart(const Part& part, const std::optional<std::string>& filePath) { return Part(); }
+		virtual Part AddComponent(const std::string& filePath, int embodiment) { return Part(); }
 		// Имя не CreateProcess: так называется макрос Win32
 		virtual std::unique_ptr<KProcess3D::Process3DImpl> CreateProcessImpl() { return nullptr; }
 		virtual ~Doc3DImpl() = default;
@@ -237,6 +238,11 @@ public:
 	}
 	Part AddPart(const Part& part, const std::optional<std::string>& filePath = std::nullopt) {
 		return doc->AddPart(part, filePath);
+	}
+	// Компонент из файла с выбранным исполнением (индекс исполнения в файле; -1 — текущее).
+	// Штатная вставка API7: компонент и его сопряжения сразу видны в дереве
+	Part AddComponent(const std::string& filePath, int embodiment = -1) {
+		return doc->AddComponent(filePath, embodiment);
 	}
 	template <typename T>
 	T& CreatePorcess() {

@@ -363,10 +363,22 @@ public:
 		NodeApi7* n1 = dynamic_cast<NodeApi7*>(object1.node.get());
 		NodeApi7* n2 = dynamic_cast<NodeApi7*>(object2.node.get());
 		if (!n1 || !n2) return false;
-		K5::ksEntityPtr obj1 = n1->entity;
-		K5::ksEntityPtr obj2 = n2->entity;
-		if (!obj1 || !obj2) return false;
-		return doc->AddMateConstraint(type, obj1, obj2, direction, fixed, value);
+		// Через API7, как сопряжения процесса: созданное через API5 (ksDocument3D::AddMateConstraint)
+		// во время процесса работает, но в дереве появляется только после переоткрытия документа
+		K7::IModelObjectPtr obj1 = ToApi7<K7::IModelObjectPtr>(n1->def);
+		K7::IModelObjectPtr obj2 = ToApi7<K7::IModelObjectPtr>(n2->def);
+		K7::IKompasDocument3DPtr doc7 = ToApi7<K7::IKompasDocument3DPtr>(doc);
+		K7::IPart7Ptr top = doc7 ? doc7->TopPart : nullptr;
+		K7::IMateConstraints3DPtr mates = top ? top->MateConstraints : nullptr;
+		if (!obj1 || !obj2 || !mates) return false;
+		K7::IMateConstraint3DPtr mate = mates->Add((KConst3D::MateConstraintType)type);
+		if (!mate) return false;
+		mate->BaseObject1 = obj1;
+		mate->BaseObject2 = obj2;
+		mate->Alignment = (KConst3D::ksMateConstraintAlignmentEnum)direction;
+		mate->Fixed = (KConst3D::ksMateFixedTypeEnum)fixed;
+		mate->ParamValue = value;
+		return mate->Update() != VARIANT_FALSE;
 	}
 	
 	std::unique_ptr<KProcess3D::Process3DImpl> CreateProcessImpl() override {
@@ -377,6 +389,23 @@ public:
 		return std::make_unique<Process3DApi7>(doc, proc);
 	}
 	
+	Part AddComponent(const std::string& filePath, int embodiment) override {
+		K7::IKompasDocument3DPtr doc7 = ToApi7<K7::IKompasDocument3DPtr>(doc);
+		K7::IPart7Ptr top = doc7 ? doc7->TopPart : nullptr;
+		K7::IParts7Ptr parts = top ? top->Parts : nullptr;
+		if (!parts) return Part();
+		K7::IPart7Ptr comp = parts->AddFromFile(Utf8ToBstr(filePath), VARIANT_TRUE, VARIANT_TRUE);
+		if (!comp) return Part();
+		if (embodiment >= 0) {
+			K7::IEmbodimentsManagerPtr em = comp;
+			if (!em || !em->SetCurrentEmbodiment(embodiment)) {
+				throw Kompas3DException("Не могу выбрать исполнение компонента: " + filePath);
+			}
+		}
+		K5::ksPartPtr part = ToApi5<K5::ksPartPtr>(comp);
+		return part ? Part(std::make_unique<PartApi7>(doc, part)) : Part();
+	}
+
 	Part AddPart(const Part& part, const std::optional<std::string>& filePath) override {
 		PartApi7* p7 = dynamic_cast<PartApi7*>(part.part.get());
 		if (!p7 || !p7->part) return Part();
