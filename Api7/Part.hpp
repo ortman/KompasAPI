@@ -25,6 +25,42 @@
 #include "Node/CylindricSpiral.hpp"
 #include "Node/ThreadDesignation.hpp"
 
+inline std::unique_ptr<Node::NodeImpl> EntityToNode(K5::ksEntityPtr entity, int type) {
+	switch (type) {
+		case 5:  return std::make_unique<SketchApi7>(entity, nullptr);
+		case 6:  return std::make_unique<FaceApi7>(entity, nullptr);
+		case 7:  return std::make_unique<EdgeApi7>(entity, nullptr);
+		case 8:  return std::make_unique<VertexApi7>(entity, nullptr);
+		case 11: return std::make_unique<ConeAxisApi7>(entity, nullptr);
+		case 14: return std::make_unique<OffsetPlaneApi7>(entity, nullptr);
+		case 19: return std::make_unique<EdgePointPlaneApi7>(entity, nullptr);
+		case 20: return std::make_unique<ParallelPlaneApi7>(entity, nullptr);
+		case 24: return std::make_unique<BaseExtrusionApi7>(entity, nullptr);
+		case 25: return std::make_unique<BossExtrusionApi7>(entity, nullptr);
+		case 26: return std::make_unique<CutExtrusionApi7>(entity, nullptr);
+		case 27: return std::make_unique<BaseRotatedApi7>(entity, nullptr);
+		case 28: return std::make_unique<BossRotatedApi7>(entity, nullptr);
+		case 29: return std::make_unique<CutRotatedApi7>(entity, nullptr);
+		case 30: return std::make_unique<BaseLoftApi7>(entity, nullptr);
+		case 31: return std::make_unique<BossLoftApi7>(entity, nullptr);
+		case 32: return std::make_unique<CutLoftApi7>(entity, nullptr);
+		case 33: return std::make_unique<ChamferApi7>(entity, nullptr);
+		case 34: return std::make_unique<FilletApi7>(entity, nullptr);
+		case 35: return std::make_unique<MeshCopyApi7>(entity, nullptr);
+		case 36: return std::make_unique<CircularCopyApi7>(entity, nullptr);
+		case 43: return std::make_unique<ShellApi7>(entity, nullptr);
+		case 44: return std::make_unique<RibApi7>(entity, nullptr);
+		case 45: return std::make_unique<BaseEvolutionApi7>(entity, nullptr);
+		case 46: return std::make_unique<BossEvolutionApi7>(entity, nullptr);
+		case 47: return std::make_unique<CutEvolutionApi7>(entity, nullptr);
+		case 48: return std::make_unique<MirrorCopyApi7>(entity, nullptr);
+		case 56: return std::make_unique<CylindricSpiralApi7>(entity, nullptr);
+		case 58: return std::make_unique<ThreadDesignationApi7>(entity, nullptr);
+		case 63: return std::make_unique<NodeMacroApi7>(entity, nullptr);
+		default: return std::make_unique<NodeApi7>(entity, nullptr);
+	}
+}
+
 class PartApi7 : public Part::PartImpl {
 public:
 	K5::ksDocument3DPtr doc;
@@ -34,42 +70,6 @@ public:
 	
 	std::string Name() {
 		return BstrToUtf8(part->name);
-	}
-	
-	std::unique_ptr<Node::NodeImpl> EntityToNode(K5::ksEntityPtr entity, int type) {
-		switch (type) {
-			case 5:  return std::make_unique<SketchApi7>(entity, nullptr);
-			case 6:  return std::make_unique<FaceApi7>(entity, nullptr);
-			case 7:  return std::make_unique<EdgeApi7>(entity, nullptr);
-			case 8:  return std::make_unique<VertexApi7>(entity, nullptr);
-			case 11: return std::make_unique<ConeAxisApi7>(entity, nullptr);
-			case 14: return std::make_unique<OffsetPlaneApi7>(entity, nullptr);
-			case 19: return std::make_unique<EdgePointPlaneApi7>(entity, nullptr);
-			case 20: return std::make_unique<ParallelPlaneApi7>(entity, nullptr);
-			case 24: return std::make_unique<BaseExtrusionApi7>(entity, nullptr);
-			case 25: return std::make_unique<BossExtrusionApi7>(entity, nullptr);
-			case 26: return std::make_unique<CutExtrusionApi7>(entity, nullptr);
-			case 27: return std::make_unique<BaseRotatedApi7>(entity, nullptr);
-			case 28: return std::make_unique<BossRotatedApi7>(entity, nullptr);
-			case 29: return std::make_unique<CutRotatedApi7>(entity, nullptr);
-			case 30: return std::make_unique<BaseLoftApi7>(entity, nullptr);
-			case 31: return std::make_unique<BossLoftApi7>(entity, nullptr);
-			case 32: return std::make_unique<CutLoftApi7>(entity, nullptr);
-			case 33: return std::make_unique<ChamferApi7>(entity, nullptr);
-			case 34: return std::make_unique<FilletApi7>(entity, nullptr);
-			case 35: return std::make_unique<MeshCopyApi7>(entity, nullptr);
-			case 36: return std::make_unique<CircularCopyApi7>(entity, nullptr);
-			case 43: return std::make_unique<ShellApi7>(entity, nullptr);
-			case 44: return std::make_unique<RibApi7>(entity, nullptr);
-			case 45: return std::make_unique<BaseEvolutionApi7>(entity, nullptr);
-			case 46: return std::make_unique<BossEvolutionApi7>(entity, nullptr);
-			case 47: return std::make_unique<CutEvolutionApi7>(entity, nullptr);
-			case 48: return std::make_unique<MirrorCopyApi7>(entity, nullptr);
-			case 56: return std::make_unique<CylindricSpiralApi7>(entity, nullptr);
-			case 58: return std::make_unique<ThreadDesignationApi7>(entity, nullptr);
-			case 63: return std::make_unique<NodeMacroApi7>(entity, nullptr);
-			default: return std::make_unique<NodeApi7>(entity, nullptr);
-		}
 	}
 	
 	std::unique_ptr<Node::NodeImpl> CreateImpl(int type) {

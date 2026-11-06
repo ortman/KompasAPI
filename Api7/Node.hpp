@@ -231,3 +231,5 @@ public:
 		return model->Update() != VARIANT_FALSE;
 	}
 };
+
+inline std::unique_ptr<Node::NodeImpl> EntityToNode(K5::ksEntityPtr entity, int type);

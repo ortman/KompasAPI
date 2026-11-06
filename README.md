@@ -390,8 +390,8 @@ cmake -B build -DKOMPAS_SDK_DIR=C:/KSDK24
 2. `Api7/Node/Xxx.hpp` — `class XxxApi7 : public NodeApi7, public Xxx::XxxImpl`.
    Доступны `entity` (`ksEntity`) и `def` (definition) из `NodeApi7`, а также
    `ToApi7<T>()` / `ToApi5<T>()` для перехода между поколениями интерфейсов.
-3. Зарегистрировать тип в `PartApi7::EntityToNode` — иначе `Part::Create<Xxx>()` и
-   `GetNodes()` не отдадут нужный класс.
+3. Зарегистрировать тип в Api7-фабрике `EntityToNode` (`Api7/Part.hpp`) — иначе
+   `Part::Create<Xxx>()`, `Part::GetNodes()` и `NodeMacro::GetNodes()` не отдадут нужный класс.
 4. Добавить оба файла в `KompasAPI.upp` и включить заголовок в `Include/Kompas3D.h`.
 5. Если параметры операции нужно читать и менять после создания — переопределить
    `GetParamMap` / `SetParamMap` в реализации и описать имена в таблице выше.

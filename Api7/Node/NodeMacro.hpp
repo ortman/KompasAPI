@@ -28,7 +28,7 @@ public :
 		for (int i = 0; i < count; ++i) {
 			K5::ksFeaturePtr feature = subFeatures->GetByIndex(i);
 			if (K5::ksEntityPtr e = feature->GetObject()) {
-				//nodes.push_back(Node(e));
+				nodes.push_back(Node(EntityToNode(e, e->type)));
 			}
 		}
 		return nodes;
