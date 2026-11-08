@@ -72,6 +72,8 @@ public:
 		virtual std::optional<Appearance> GetAppearance() { return std::nullopt; }
 		// nullopt — снять свой цвет (наследовать от владельца)
 		virtual bool SetAppearance(const std::optional<Appearance>& appearance) { return false; }
+		// Скрыть объект в окне модели (поверхность после сшивки или отсечения)
+		virtual bool SetHidden(bool hidden) { return false; }
 		virtual ~NodeImpl() = default;
 	};
 
@@ -106,6 +108,7 @@ public:
 	}
 	std::optional<Appearance> GetAppearance() { return node->GetAppearance(); }
 	bool SetAppearance(const std::optional<Appearance>& appearance) { return node->SetAppearance(appearance); }
+	bool SetHidden(bool hidden) { return node->SetHidden(hidden); }
 	operator bool() const { return node != nullptr; }
 };
 

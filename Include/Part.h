@@ -48,6 +48,9 @@ public:
 		virtual int CheckIntersection(Part& other, bool tangent) { return -1; }
 		virtual std::optional<MassProperties> GetMassProperties() { return std::nullopt; }
 		virtual int GetBodiesCount() { return 0; }
+		virtual int GetSurfacesCount() { return 0; }
+		virtual std::vector<Face> GetFeatureFaces(const Node& feature) { return {}; }
+		virtual std::vector<Edge> GetFeatureEdges(const Node& feature) { return {}; }
 		virtual bool SetVariable(const std::string& name, double value) { return false; }
 		virtual bool SetVariableExpression(const std::string& name, const std::string& expression) { return false; }
 		virtual bool AddVariable(const std::string& name, double value, const std::string& comment) { return false; }
@@ -119,7 +122,12 @@ public:
 	int CheckIntersection(Part& other, bool tangent = false) { return part->CheckIntersection(other, tangent); }
 	// МЦХ: масса в кг, длины в мм
 	std::optional<MassProperties> GetMassProperties() { return part->GetMassProperties(); }
+	// Твёрдые тела; поверхности (тела без объёма) — отдельно
 	int GetBodiesCount() { return part->GetBodiesCount(); }
+	int GetSurfacesCount() { return part->GetSurfacesCount(); }
+	// Грани и рёбра, созданные операцией (поверхностью, кривой…)
+	std::vector<Face> GetFeatureFaces(const Node& feature) { return part->GetFeatureFaces(feature); }
+	std::vector<Edge> GetFeatureEdges(const Node& feature) { return part->GetFeatureEdges(feature); }
 	// Значение или выражение переменной; false — переменная не найдена
 	bool SetVariable(const std::string& name, double value) { return part->SetVariable(name, value); }
 	bool SetVariableExpression(const std::string& name, const std::string& expression) { return part->SetVariableExpression(name, expression); }

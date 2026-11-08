@@ -217,6 +217,12 @@ public:
 		if (!cp) return std::nullopt;
 		return ReadAppearance(cp);
 	}
+	bool SetHidden(bool hidden) override {
+		K7::IModelObjectPtr model = entity ? ToApi7<K7::IModelObjectPtr>(entity) : nullptr;
+		if (!model) return false;
+		model->Hidden = hidden ? VARIANT_TRUE : VARIANT_FALSE;
+		return model->Update() != VARIANT_FALSE;
+	}
 	bool SetAppearance(const std::optional<Appearance>& appearance) override {
 		K7::IModelObjectPtr model = entity ? ToApi7<K7::IModelObjectPtr>(entity) : nullptr;
 		K7::IColorParam7Ptr cp = model;

@@ -24,6 +24,7 @@
 #include "Node/CircularCopy.hpp"
 #include "Node/CylindricSpiral.hpp"
 #include "Node/ThreadDesignation.hpp"
+#include "Node/Surfaces.hpp"
 
 inline std::unique_ptr<Node::NodeImpl> EntityToNode(K5::ksEntityPtr entity, int type) {
 	switch (type) {
@@ -55,6 +56,10 @@ inline std::unique_ptr<Node::NodeImpl> EntityToNode(K5::ksEntityPtr entity, int 
 		case 47: return std::make_unique<CutEvolutionApi7>(entity, nullptr);
 		case 48: return std::make_unique<MirrorCopyApi7>(entity, nullptr);
 		case 56: return std::make_unique<CylindricSpiralApi7>(entity, nullptr);
+		case 59: return std::make_unique<EvolutionSurfaceApi7>(entity, nullptr);
+		case 60: return std::make_unique<ExtrusionSurfaceApi7>(entity, nullptr);
+		case 61: return std::make_unique<RotatedSurfaceApi7>(entity, nullptr);
+		case 62: return std::make_unique<LoftSurfaceApi7>(entity, nullptr);
 		case 58: return std::make_unique<ThreadDesignationApi7>(entity, nullptr);
 		case 63: return std::make_unique<NodeMacroApi7>(entity, nullptr);
 		default: return std::make_unique<NodeApi7>(entity, nullptr);
@@ -72,7 +77,33 @@ public:
 		return BstrToUtf8(part->name);
 	}
 	
+	// Объекты каркаса и поверхностей, которые создаются через коллекции API7
+	std::unique_ptr<Node::NodeImpl> CreateImpl7(int type) {
+		K7::IPart7Ptr part7 = ToApi7<K7::IPart7Ptr>(part);
+		if (!part7) return nullptr;
+		K7::IAuxiliaryGeomContainerPtr aux = part7;
+		K7::ISurfaceContainerPtr surfaces = part7;
+		K7::IModelContainerPtr model = part7;
+		switch (type) {
+			case 55:  return std::make_unique<Spline3DApi7>(part, aux->Splines3D->Add(), type);
+			case 53:  return std::make_unique<PolyLine3DApi7>(part, aux->PolyLines->Add(), type);
+			case 515: return std::make_unique<RuledSurfaceApi7>(part, surfaces->RuledSurfaces->Add(), type);
+			case 94:  return std::make_unique<SurfacePatchApi7>(part, surfaces->SurfacePatches->Add(), type);
+			case 514: return std::make_unique<EquidistantSurfaceApi7>(part, surfaces->EquidistantSurfaces->Add(), type);
+			case 96:  return std::make_unique<SurfaceSewerApi7>(part, surfaces->SurfaceSewers->Add(), type);
+			case 518: return std::make_unique<SurfaceThickeningApi7>(part, model->SurfaceThickenings->Add(), type);
+			case 50:  return std::make_unique<SurfaceCutApi7>(part, model->Cuts->Add(), type);
+			case 552: return std::make_unique<NurbsSurfaceByCurvesMeshApi7>(part, surfaces->NurbsSurfacesByCurvesMeshs->Add(), type);
+			case 516: return std::make_unique<TrimmedSurfaceApi7>(part, surfaces->TrimmedSurfaces->Add(), type);
+			case 98:  return std::make_unique<SurfacesIntersectionCurveApi7>(part, aux->SurfacesIntersectionCurves->Add(), type);
+			case 567: return std::make_unique<ProjectionCurveApi7>(part, aux->ProjectionCurves->Add(), type);
+			case 568: return std::make_unique<Contour3DApi7>(part, aux->Contours3D->Add(), type);
+			default:  return nullptr;
+		}
+	}
+
 	std::unique_ptr<Node::NodeImpl> CreateImpl(int type) {
+		if (std::unique_ptr<Node::NodeImpl> node7 = CreateImpl7(type)) return node7;
 		K5::ksEntityPtr entity = part->NewEntity(type);
 		if (!entity) return nullptr;
 		return EntityToNode(entity, type);
@@ -121,7 +152,7 @@ public:
 	std::optional<Part::BoundingBox> GetBoundingBox() override {
 		if (!part) return std::nullopt;
 		// У сборки своих тел нет — габарит по компонентам
-		if (GetBodiesCount() == 0 && (!doc || doc->IsDetail())) return std::nullopt;
+		if (GetBodiesCount() == 0 && GetSurfacesCount() == 0 && (!doc || doc->IsDetail())) return std::nullopt;
 		Part::BoundingBox box;
 		if (!part->GetGabarit(false, false, &box.x1, &box.y1, &box.z1, &box.x2, &box.y2, &box.z2)) return std::nullopt;
 		if (box.x1 > box.x2 || box.y1 > box.y2 || box.z1 > box.z2) return std::nullopt;
@@ -351,11 +382,19 @@ public:
 			Kompas3D::Cp1251ToUtf8(part->material)
 		};
 	}
-	int GetBodiesCount() override {
+	// Тела и поверхности: BodyCollection отдаёт и поверхности (проверено на v24), их отличает IsSolid
+	int CountBodies(bool solid) {
 		if (!part) return 0;
 		K5::ksBodyCollectionPtr bodies = part->BodyCollection();
-		return bodies ? (int)bodies->GetCount() : 0;
+		int count = 0;
+		for (long i = 0, n = bodies ? bodies->GetCount() : 0; i < n; ++i) {
+			K5::ksBodyPtr body = bodies->GetByIndex(i);
+			if (body && (body->IsSolid() != VARIANT_FALSE) == solid) ++count;
+		}
+		return count;
 	}
+	int GetBodiesCount() override { return CountBodies(true); }
+	int GetSurfacesCount() override { return CountBodies(false); }
 	K7::IVariable7Ptr FindVariable(const std::string& name) {
 		return FindFeatureVariable(Feature7(), name);
 	}
@@ -456,8 +495,28 @@ public:
 	std::vector<Edge> GetEdges() override {
 		return Entities<Edge, EdgeApi7>(7 /*o3d_edge*/);
 	}
+	// Грани и рёбра, созданные операцией (у кривой — её рёбра)
+	template <typename T, typename Impl>
+	std::vector<T> FeatureEntities(const Node& n, short type) {
+		std::vector<T> result;
+		NodeApi7* n7 = dynamic_cast<NodeApi7*>(n.node.get());
+		K5::ksFeaturePtr feature = n7 && n7->entity ? n7->entity->GetFeature() : nullptr;
+		K5::ksEntityCollectionPtr entities = feature ? feature->EntityCollection(type) : nullptr;
+		for (long i = 0, count = entities ? entities->GetCount() : 0; i < count; ++i) {
+			K5::ksEntityPtr entity = entities->GetByIndex(i);
+			if (entity) result.push_back(T(std::make_unique<Impl>(entity, nullptr)));
+		}
+		return result;
+	}
+	std::vector<Face> GetFeatureFaces(const Node& n) override { return FeatureEntities<Face, FaceApi7>(n, 6 /*o3d_face*/); }
+	std::vector<Edge> GetFeatureEdges(const Node& n) override { return FeatureEntities<Edge, EdgeApi7>(n, 7 /*o3d_edge*/); }
 	void Remove(const Node& n) {
 		NodeApi7* n7 = dynamic_cast<NodeApi7*>(n.node.get());
+		if (n7 && !n7->entity) {
+			// Объект API7, для которого КОМПАС не создал сущность дерева
+			if (ModelObjectApi7* m = dynamic_cast<ModelObjectApi7*>(n7)) m->Delete();
+			return;
+		}
 		if (n7 && doc) {
 			K5::ksEntityPtr entity = n7->entity;
 			doc->DeleteObject(entity);

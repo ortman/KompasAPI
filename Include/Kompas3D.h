@@ -18,6 +18,7 @@
 #include "ThreadSpec.h"
 #include "Node/ThreadDesignation.h"
 #include "Node/CylindricSpiral.h"
+#include "Node/Surfaces.h"
 
 #include "Panel.h"
 
