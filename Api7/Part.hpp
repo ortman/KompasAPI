@@ -98,6 +98,8 @@ public:
 			case 98:  return std::make_unique<SurfacesIntersectionCurveApi7>(part, aux->SurfacesIntersectionCurves->Add(), type);
 			case 567: return std::make_unique<ProjectionCurveApi7>(part, aux->ProjectionCurves->Add(), type);
 			case 568: return std::make_unique<Contour3DApi7>(part, aux->Contours3D->Add(), type);
+			case 528:
+			case 529: return std::make_unique<BodiesPatternApi7>(part, model->FeaturePatterns->Add((KConst3D::ksObj3dTypeEnum)type), type);
 			default:  return nullptr;
 		}
 	}
@@ -472,7 +474,21 @@ public:
 		// У детали UseColor = useColorUnknown (цвет свой); у компонента сборки — делаем своим
 		if ((int)cp->UseColor != KConst3D::useColorUnknown) cp->UseColor = KConst3D::useColorOur;
 		WriteAppearance(cp, appearance);
-		return part7->Update() != VARIANT_FALSE;
+		// Проверено на v24: у детали с несколькими телами Update возвращает FALSE, хотя цвет
+		// применён, — судим по прочитанному цвету
+		part7->Update();
+		K7::IColorParam7Ptr now = part7;
+		return now && SwapRedBlue((unsigned long)now->Color) == (appearance.color & 0xFFFFFF);
+	}
+	int InheritBodiesColor() override {
+		int count = 0;
+		K5::ksBodyCollectionPtr bodies = part ? part->BodyCollection() : nullptr;
+		for (long i = 0, n = bodies ? bodies->GetCount() : 0; i < n; ++i) {
+			K5::ksBodyPtr body = bodies->GetByIndex(i);
+			IDispatchPtr body7 = body ? ToApi7<IDispatchPtr>(body) : nullptr;
+			if (body7 && InheritBodyColor(body7)) ++count;
+		}
+		return count;
 	}
 	bool Rebuild() override {
 		return part && part->RebuildModel();

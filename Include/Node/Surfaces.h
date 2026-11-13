@@ -157,4 +157,50 @@ using ProjectionCurve = ModelObjectsNode<567>;      /* o3d_ProjectionCurve */
 // Контур (кривая) из цепочки рёбер или кривых
 using Contour3D = ModelObjectsNode<568>;            /* o3d_Contour3D */
 
+// --------------------------------------------------------------- массивы тел --
+// Копии тел, созданных операциями (сшивка поверхностей, отдельное тело). Массив операций
+// копирует только добавление материала к телу; отдельное тело копирует массив тел.
+// Проверено на v24: копии появляются после перестроения модели
+class BodiesPatternImpl : virtual public Node::NodeImpl {
+public:
+	virtual void SetBodiesOf(const std::vector<const Node*>& features) = 0;
+	virtual void SetCircular(const Node& axis, int count, double angle) {}
+	virtual void SetLinear(const Node& axis1, int count1, double step1, const Node* axis2, int count2, double step2) {}
+};
+
+// По окружности: count экземпляров (с исходным), angle — 360 (равномерно) или угол от первого
+// экземпляра до последнего, градусы
+class BodiesCircularPattern : public Node {
+public:
+	static inline int TYPE = 529;   /* o3d_BodiesCircularCopy */
+	BodiesCircularPattern(std::unique_ptr<NodeImpl> p, const std::vector<const Node*>& features, const Node& axis,
+	                      int count, double angle, const std::optional<std::string>& name = std::nullopt) : Node(std::move(p)) {
+		if (name.has_value()) node->SetName(name.value());
+		if (BodiesPatternImpl* b = dynamic_cast<BodiesPatternImpl*>(node.get())) {
+			b->SetBodiesOf(features);
+			b->SetCircular(axis, count, angle);
+		}
+		node->Create();
+	}
+	BodiesCircularPattern(Node&& node) : Node(std::move(node)) {}
+};
+
+// Линейный: count1 экземпляров с шагом step1 вдоль axis1 (отрицательный шаг — в обратную
+// сторону), необязательное второе направление
+class BodiesLinearPattern : public Node {
+public:
+	static inline int TYPE = 528;   /* o3d_BodiesMeshCopy */
+	BodiesLinearPattern(std::unique_ptr<NodeImpl> p, const std::vector<const Node*>& features, const Node& axis1,
+	                    int count1, double step1, const Node* axis2, int count2, double step2,
+	                    const std::optional<std::string>& name = std::nullopt) : Node(std::move(p)) {
+		if (name.has_value()) node->SetName(name.value());
+		if (BodiesPatternImpl* b = dynamic_cast<BodiesPatternImpl*>(node.get())) {
+			b->SetBodiesOf(features);
+			b->SetLinear(axis1, count1, step1, axis2, count2, step2);
+		}
+		node->Create();
+	}
+	BodiesLinearPattern(Node&& node) : Node(std::move(node)) {}
+};
+
 #endif

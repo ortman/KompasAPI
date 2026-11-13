@@ -5,6 +5,7 @@
 #include "Features.hpp"
 #include "Rotated.hpp"
 
+#include <cmath>
 #include <vector>
 
 namespace Api7Surfaces {
@@ -30,6 +31,23 @@ inline _variant_t Objects(const std::vector<const Node*>& nodes, const char* wha
 	result.vt = VT_ARRAY | VT_DISPATCH;
 	result.parray = array;
 	return result;
+}
+
+// VARIANT из готовых объектов: один — VT_DISPATCH, несколько — массив
+inline _variant_t Dispatches(const std::vector<IDispatchPtr>& items) {
+	if (items.size() == 1) return _variant_t((IDispatch*)items.front(), true);
+	SAFEARRAY* array = SafeArrayCreateVector(VT_DISPATCH, 0, (ULONG)items.size());
+	for (LONG i = 0; i < (LONG)items.size(); ++i) SafeArrayPutElement(array, &i, (IDispatch*)items[i]);
+	_variant_t result;
+	result.vt = VT_ARRAY | VT_DISPATCH;
+	result.parray = array;
+	return result;
+}
+
+// Тела, созданные операцией
+inline std::vector<IDispatchPtr> ResultBodies(const Node& n) {
+	NodeApi7* n7 = dynamic_cast<NodeApi7*>(n.node.get());
+	return FeatureResultBodies(n7 ? n7->Feature7() : nullptr);
 }
 
 } // namespace Api7Surfaces
@@ -284,6 +302,55 @@ public:
 		K7::IProjectionCurvePtr p = object;
 		p->Faces = Api7Surfaces::Objects(objects, "грани проекции");
 		p->ProjectionType = KConst3D::ksCPNearest;   // по нормали к граням
+	}
+};
+
+// Массивы тел. Проверено на v24: у концентрического массива Count1/Step1 — по радиусу,
+// Count2/Step2 — по окружности (Step2 = 360 c BoundaryInstancesStepFactor2 — равномерно);
+// копии появляются только после перестроения модели
+class BodiesPatternApi7 : public ModelObjectApi7, public BodiesPatternImpl {
+public:
+	using ModelObjectApi7::ModelObjectApi7;
+	void SetBodiesOf(const std::vector<const Node*>& features) override {
+		std::vector<IDispatchPtr> bodies;
+		for (const Node* f : features) {
+			for (IDispatchPtr b : Api7Surfaces::ResultBodies(*f)) bodies.push_back(b);
+		}
+		if (bodies.empty()) throw Kompas3DException("У операций нет тел для массива");
+		K7::IFeaturePatternPtr(object)->InitialObjects = Api7Surfaces::Dispatches(bodies);
+	}
+	void SetCircular(const Node& axis, int count, double angle) override {
+		K7::ICircularPatternPtr p = object;
+		if (!p) throw Kompas3DException("Не могу получить ICircularPattern");
+		p->Axis = Api7Surfaces::Model7(axis, "ось массива");
+		p->Count1 = 1;
+		p->Count2 = count;
+		p->Step2 = angle;
+		p->BoundaryInstancesStepFactor2 = VARIANT_TRUE;
+	}
+	void SetLinear(const Node& axis1, int count1, double step1, const Node* axis2, int count2, double step2) override {
+		K7::ILinearPatternPtr p = object;
+		if (!p) throw Kompas3DException("Не могу получить ILinearPattern");
+		p->Axis1 = Api7Surfaces::Model7(axis1, "направление массива");
+		p->Count1 = count1;
+		p->Step1 = std::abs(step1);
+		p->Direction1 = step1 < 0 ? VARIANT_TRUE : VARIANT_FALSE;
+		p->BoundaryInstancesStepFactor1 = VARIANT_FALSE;
+		p->Count2 = axis2 ? count2 : 1;
+		if (axis2) {
+			p->Axis2 = Api7Surfaces::Model7(*axis2, "второе направление массива");
+			p->Step2 = std::abs(step2);
+			p->Direction2 = step2 < 0 ? VARIANT_TRUE : VARIANT_FALSE;
+			p->BoundaryInstancesStepFactor2 = VARIANT_FALSE;
+		}
+	}
+	void Create() override {
+		ModelObjectApi7::Create();
+		// Копий нет до перестроения; перестроение одной детали оставляет старые МЦХ —
+		// перестраиваем документ
+		K5::ksDocument3DPtr doc = ComEvent::kompas5 ? K5::ksDocument3DPtr(ComEvent::kompas5->ActiveDocument3D()) : nullptr;
+		if (doc) doc->RebuildDocument();
+		else part->RebuildModel();
 	}
 };
 

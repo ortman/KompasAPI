@@ -114,6 +114,37 @@ inline K7::IVariable7Ptr FindFeatureVariable(K7::IFeature7Ptr feature, const std
 	return nullptr;
 }
 
+// Тела, созданные операцией (IFeature7::ResultBodies: одно тело или массив)
+inline std::vector<IDispatchPtr> FeatureResultBodies(K7::IFeature7Ptr feature) {
+	std::vector<IDispatchPtr> bodies;
+	if (!feature) return bodies;
+	_variant_t result = feature->ResultBodies;
+	if (result.vt == VT_DISPATCH && result.pdispVal) {
+		bodies.push_back(result.pdispVal);
+	} else if ((result.vt & VT_ARRAY) && result.parray) {
+		LONG lo = 0, hi = -1;
+		SafeArrayGetLBound(result.parray, 1, &lo);
+		SafeArrayGetUBound(result.parray, 1, &hi);
+		for (LONG i = lo; i <= hi; ++i) {
+			IDispatch* item = nullptr;
+			if (SUCCEEDED(SafeArrayGetElement(result.parray, &i, &item)) && item) bodies.push_back(IDispatchPtr(item, false));
+		}
+	}
+	return bodies;
+}
+
+// Цвет тела «по исходному объекту». Проверено на v24: это useColorOwner — тело берёт цвет
+// детали; useColorSource у тела не принимается (Update возвращает FALSE)
+inline bool InheritBodyColor(IDispatchPtr body) {
+	K7::IBody7Ptr b = body;
+	K7::IColorParam7Ptr cp = body;
+	if (!b || !cp) return false;
+	if ((int)cp->UseColor == KConst3D::useColorOwner) return true;
+	cp->UseColor = KConst3D::useColorOwner;
+	b->Update();
+	return (int)K7::IColorParam7Ptr(body)->UseColor == KConst3D::useColorOwner;
+}
+
 // Цвет в КОМПАСе — COLORREF (0x00BBGGRR), снаружи — 0xRRGGBB
 inline unsigned long SwapRedBlue(unsigned long c) {
 	return ((c & 0xFF) << 16) | (c & 0xFF00) | ((c >> 16) & 0xFF);
@@ -231,8 +262,12 @@ public:
 			cp->UseColor = KConst3D::useColorOur;
 			WriteAppearance(cp, *appearance);
 		} else {
-			// Как у новых объектов: грань берёт цвет операции, операция — источника (детали)
+			// Как у новых объектов: грань берёт цвет операции, операция — источника (детали);
+			// тела операции (сшивка, массив тел) — по исходному объекту, иначе их цвет остаётся своим
 			cp->UseColor = entity->type == 6 /*o3d_face*/ ? KConst3D::useColorOwner : KConst3D::useColorSource;
+			if (entity->type != 6) {
+				for (IDispatchPtr body : FeatureResultBodies(Feature7())) InheritBodyColor(body);
+			}
 		}
 		return model->Update() != VARIANT_FALSE;
 	}
