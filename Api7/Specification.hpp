@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../Include/Specification.h"
+#include "SaveVersion.hpp"
 
 #include <filesystem>
 
@@ -101,6 +102,10 @@ public:
 		doc7->SaveAs(Utf8ToBstr(path));
 		std::error_code ec;
 		return std::filesystem::exists(std::filesystem::path((const wchar_t*)Utf8ToBstr(path)), ec);
+	}
+
+	bool SaveAsVersion(const std::string& path, SaveVersion version) override {
+		return Api7SaveVersion::Save(doc7, path, version);
 	}
 
 	bool ExportPdf(const std::string& path) override {

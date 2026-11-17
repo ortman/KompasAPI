@@ -6,6 +6,7 @@
 
 #include "Part.hpp"
 #include "Process3D.hpp"
+#include "SaveVersion.hpp"
 #include "Node/NodeMacro.hpp"
 
 #include <filesystem>
@@ -138,6 +139,10 @@ public:
 
 	bool SaveAsNative(const std::string& path) override {
 		return doc->SaveAs(Kompas3D::Utf8ToCp1251(path).c_str());
+	}
+
+	bool SaveAsVersion(const std::string& path, SaveVersion version) override {
+		return Api7SaveVersion::Save(ToApi7<K7::IKompasDocumentPtr>(doc), path, version);
 	}
 
 	bool Rebuild() override {

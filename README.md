@@ -127,6 +127,14 @@ for (Node& node : part.GetNodes()) {
 принимает `Doc3D::ExportParams` — формат (`Doc3D::Format`: STL, STEP, IGES,
 ACIS, PARASOLID, VRLM, JT), единицы, точность триангуляции.
 
+`SaveAsVersion(path, SaveVersion)` пишет копию в формате предыдущей версии КОМПАСа
+(`IKompasDocument1::SaveAsEx`); документ остаётся связан со своим файлом. Есть и у `Drawing`,
+и у `Specification`. Версии — `SaveVersion` (`Include/SaveVersion.h`, значения
+`ksSaveDocumentVersionEnum`: от 5.11 до 23 с SP), `SaveVersions()` — список с именами,
+`SaveVersionByName("17 SP1")`, `SaveVersionName(v)`. Неизвестный номер КОМПАС молча принимает
+и пишет файл, а «в предыдущую версию» (-1) на v24 даёт файл 16 SP1, поэтому номера берутся
+только из перечисления. Результат проверяется по появлению файла.
+
 `IsModified` — есть несохранённые изменения; `GetProjections` — проекции модели
 (тип `Doc3D::View` и имя, например `#Спереди`) для видов чертежа.
 
@@ -142,7 +150,7 @@ ACIS, PARASOLID, VRLM, JT), единицы, точность триангуля�
 | `MoveView`, `DeleteView` | перемещение, масштаб, удаление вида |
 | `Update` | перестроить ассоциативные виды по файлам моделей |
 | `GetViewItems`, `AddDimension` | объекты вида и размеры в координатах вида, привязанные к линиям проекции |
-| `Save`, `SaveAs`, `SaveImage(path, dpi)`, `ExportPdf(path)` | сохранение, PNG листа, PDF (конвертер `Bin/Pdf2d.dll`) |
+| `Save`, `SaveAs`, `SaveAsVersion(path, SaveVersion)`, `SaveImage(path, dpi)`, `ExportPdf(path)` | сохранение, копия в формате предыдущей версии КОМПАСа, PNG листа, PDF (конвертер `Bin/Pdf2d.dll`) |
 
 Вид читает модель из файла: перед построением видов модель нужно сохранить.
 

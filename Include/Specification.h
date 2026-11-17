@@ -1,5 +1,7 @@
 #pragma once
 
+#include "SaveVersion.h"
+
 #include <map>
 #include <memory>
 #include <string>
@@ -23,6 +25,7 @@ public:
 		virtual std::vector<Row> Rows() { return {}; }
 		virtual int SetStamp(const std::map<int, std::string>& cells) { return 0; }
 		virtual bool SaveAs(const std::string& path) { return false; }
+		virtual bool SaveAsVersion(const std::string& path, SaveVersion version) { return false; }
 		virtual bool ExportPdf(const std::string& path) { return false; }
 		virtual std::string GetPath() { return std::string(); }
 		virtual void Close() {}
@@ -40,6 +43,8 @@ public:
 	// Основная надпись: 1 — наименование, 2 — обозначение…; число записанных граф
 	int SetStamp(const std::map<int, std::string>& cells) { return impl->SetStamp(cells); }
 	bool SaveAs(const std::string& path) { return impl->SaveAs(path); }
+	// Копия в формате предыдущей версии КОМПАСа
+	bool SaveAsVersion(const std::string& path, SaveVersion version) { return impl->SaveAsVersion(path, version); }
 	// PDF из сохранённого .spw
 	bool ExportPdf(const std::string& path) { return impl->ExportPdf(path); }
 	std::string GetPath() { return impl->GetPath(); }

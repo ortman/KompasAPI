@@ -4,6 +4,7 @@
 #include "../Include/Kompas3D.h"
 #include "Node.hpp"
 #include "Annotation2D.hpp"
+#include "SaveVersion.hpp"
 
 #include <filesystem>
 
@@ -556,6 +557,10 @@ public:
 	}
 
 	bool SaveAs(const std::string& path) override { return SUCCEEDED(doc7->SaveAs(Utf8ToBstr(path))); }
+
+	bool SaveAsVersion(const std::string& path, SaveVersion version) override {
+		return Api7SaveVersion::Save(doc7, path, version);
+	}
 
 	bool SaveImage(const std::string& path, int dpi) override {
 		K5::ksDocument2DPtr doc = Doc5();

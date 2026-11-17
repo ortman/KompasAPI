@@ -4,6 +4,7 @@
 #include <array>
 
 #include "Annotation2D.h"
+#include "SaveVersion.h"
 #include <map>
 #include <memory>
 #include <optional>
@@ -105,6 +106,7 @@ public:
 		virtual bool SetUnspecifiedRough(const std::optional<UnspecifiedRough>& rough) { return false; }
 		virtual bool Save() { return false; }
 		virtual bool SaveAs(const std::string& path) { return false; }
+		virtual bool SaveAsVersion(const std::string& path, SaveVersion version) { return false; }
 		virtual bool SaveImage(const std::string& path, int dpi) { return false; }
 		virtual bool ExportPdf(const std::string& path) { return false; }
 		virtual void Activate() {}
@@ -178,6 +180,8 @@ public:
 	bool Update() { return impl->Update(); }
 	bool Save() { return impl->Save(); }
 	bool SaveAs(const std::string& path) { return impl->SaveAs(path); }
+	// Копия в формате предыдущей версии КОМПАСа; чертёж остаётся связан со своим файлом
+	bool SaveAsVersion(const std::string& path, SaveVersion version) { return impl->SaveAsVersion(path, version); }
 	// Растровый снимок листа (PNG)
 	bool SaveImage(const std::string& path, int dpi = 100) { return impl->SaveImage(path, dpi); }
 	// PDF через конвертер КОМПАСа; чертёж должен быть сохранён в файл

@@ -9,6 +9,7 @@
 
 #include "Node.h"
 #include "Part.h"
+#include "SaveVersion.h"
 #include "KompasEvent.h"
 #include "Node/NodeMacro.h"
 #include "Process3D.h"
@@ -162,6 +163,7 @@ public:
 		virtual bool SetProjection(const std::string& name, const std::array<double, 16>& matrix) { return false; }
 		virtual bool Save() { return false; }
 		virtual bool SaveAsNative(const std::string& path) { return false; }
+		virtual bool SaveAsVersion(const std::string& path, SaveVersion version) { return false; }
 		virtual bool Rebuild() { return false; }
 		virtual bool SaveImage(const ImageParams& params, const std::string& path) { return false; }
 		virtual std::vector<Part> GetComponents() { return {}; }
@@ -210,6 +212,9 @@ public:
 	bool Save() { return doc->Save(); }
 	// Сохранить в родном формате под новым именем
 	bool SaveAs(const std::string& path) { return doc->SaveAsNative(path); }
+	// Копия в формате предыдущей версии КОМПАСа; документ остаётся связан со своим файлом.
+	// true — файл записан
+	bool SaveAsVersion(const std::string& path, SaveVersion version) { return doc->SaveAsVersion(path, version); }
 	bool Rebuild() { return doc->Rebuild(); }
 	// Растровый снимок окна модели в PNG
 	bool SaveImage(const ImageParams& params, const std::string& path) { return doc->SaveImage(params, path); }
