@@ -19,6 +19,7 @@
 #include "Node/ThreadDesignation.h"
 #include "Node/CylindricSpiral.h"
 #include "Node/Surfaces.h"
+#include "Node/SheetMetal.h"
 
 #include "Panel.h"
 

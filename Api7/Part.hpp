@@ -25,6 +25,7 @@
 #include "Node/CylindricSpiral.hpp"
 #include "Node/ThreadDesignation.hpp"
 #include "Node/Surfaces.hpp"
+#include "Node/SheetMetal.hpp"
 
 inline std::unique_ptr<Node::NodeImpl> EntityToNode(K5::ksEntityPtr entity, int type) {
 	switch (type) {
@@ -62,6 +63,16 @@ inline std::unique_ptr<Node::NodeImpl> EntityToNode(K5::ksEntityPtr entity, int 
 		case 62: return std::make_unique<LoftSurfaceApi7>(entity, nullptr);
 		case 58: return std::make_unique<ThreadDesignationApi7>(entity, nullptr);
 		case 63: return std::make_unique<NodeMacroApi7>(entity, nullptr);
+		case 74:
+		case 75:
+		case 76:
+		case 78:
+		case 534:
+		case 539:
+		case 541:
+		case 542:
+		case 543:
+		case 544: return std::make_unique<SheetMetalApi7>(entity);
 		default: return std::make_unique<NodeApi7>(entity, nullptr);
 	}
 }
@@ -100,6 +111,19 @@ public:
 			case 568: return std::make_unique<Contour3DApi7>(part, aux->Contours3D->Add(), type);
 			case 528:
 			case 529: return std::make_unique<BodiesPatternApi7>(part, model->FeaturePatterns->Add((KConst3D::ksObj3dTypeEnum)type), type);
+		}
+		K7::ISheetMetalContainerPtr sheet = part7;
+		switch (type) {
+			case 74:  return std::make_unique<SheetMetalApi7>(part, sheet->SheetMetalBodies->Add(), type);
+			case 75:  return std::make_unique<SheetMetalApi7>(part, sheet->SheetMetalBends->Add(), type);
+			case 76:  return std::make_unique<SheetMetalApi7>(part, sheet->SheetMetalLineBends->Add(), type);
+			case 78:  return std::make_unique<SheetMetalApi7>(part, sheet->SheetMetalCuts->Add(), type);
+			case 534: return std::make_unique<SheetMetalApi7>(part, sheet->SheetMetalPlates->Add(), type);
+			case 539: return std::make_unique<SheetMetalApi7>(part, sheet->SheetMetalClosedCorners->Add(), type);
+			case 541:
+			case 542: return std::make_unique<SheetMetalApi7>(part, sheet->SheetMetalPressFormings->Add((KConst3D::ksObj3dTypeEnum)type), type);
+			case 543: return std::make_unique<SheetMetalApi7>(part, sheet->SheetMetalShoulders->Add(), type);
+			case 544: return std::make_unique<SheetMetalApi7>(part, sheet->SheetMetalJalousies->Add(), type);
 			default:  return nullptr;
 		}
 	}
@@ -384,6 +408,12 @@ public:
 			Kompas3D::Cp1251ToUtf8(part->material)
 		};
 	}
+	bool SetMaterial(const std::string& name, double density) override {
+		if (!part) return false;
+		if (part->SetMaterial(Utf8ToBstr(name), density) == VARIANT_FALSE) return false;
+		part->Update();
+		return true;
+	}
 	// Тела и поверхности: BodyCollection отдаёт и поверхности (проверено на v24), их отличает IsSolid
 	int CountBodies(bool solid) {
 		if (!part) return 0;
@@ -489,6 +519,28 @@ public:
 			if (body7 && InheritBodyColor(body7)) ++count;
 		}
 		return count;
+	}
+	K7::ISheetMetalBendUnfoldParametersPtr UnfoldParameters() {
+		K7::ISheetMetalContainerPtr container = ToApi7<K7::IPart7Ptr>(part);
+		if (!container || container->SheetMetalBodies->Count == 0) return nullptr;
+		return container->SheetMetalBendUnfoldParameters;
+	}
+	std::optional<bool> IsSheetMetalUnfolded() override {
+		K7::ISheetMetalBendUnfoldParametersPtr up = UnfoldParameters();
+		if (!up) return std::nullopt;
+		return up->Unfold != VARIANT_FALSE;
+	}
+	// Проверено на v24: UpdateParam возвращает FALSE и при удачной развёртке; без FixedFaces
+	// развёртка не строится. Состояние судим по чтению после перестроения документа
+	bool SetSheetMetalUnfolded(bool unfold, const Node* fixedFace) override {
+		K7::ISheetMetalBendUnfoldParametersPtr up = UnfoldParameters();
+		if (!up) return false;
+		if (fixedFace) up->FixedFaces = Api7Surfaces::Objects({fixedFace}, "неподвижная грань развёртки");
+		up->Unfold = unfold ? VARIANT_TRUE : VARIANT_FALSE;
+		up->UpdateParam();
+		if (doc) doc->RebuildDocument();
+		else part->RebuildModel();
+		return (UnfoldParameters()->Unfold != VARIANT_FALSE) == unfold;
 	}
 	bool Rebuild() override {
 		return part && part->RebuildModel();

@@ -47,6 +47,7 @@ public:
 		virtual std::optional<BoundingBox> GetBoundingBox() { return std::nullopt; }
 		virtual int CheckIntersection(Part& other, bool tangent) { return -1; }
 		virtual std::optional<MassProperties> GetMassProperties() { return std::nullopt; }
+		virtual bool SetMaterial(const std::string& name, double density) { return false; }
 		virtual int GetBodiesCount() { return 0; }
 		virtual int GetSurfacesCount() { return 0; }
 		virtual std::vector<Face> GetFeatureFaces(const Node& feature) { return {}; }
@@ -61,6 +62,8 @@ public:
 		virtual std::optional<Appearance> GetAppearance() { return std::nullopt; }
 		virtual bool SetAppearance(const Appearance& appearance) { return false; }
 		virtual int InheritBodiesColor() { return 0; }
+		virtual std::optional<bool> IsSheetMetalUnfolded() { return std::nullopt; }
+		virtual bool SetSheetMetalUnfolded(bool unfold, const Node* fixedFace) { return false; }
 		virtual bool Rebuild() { return false; }
 		virtual std::vector<Face> GetFaces() { return {}; }
 		virtual std::optional<Measurement> Measure(const Node& a, const Node& b) { return std::nullopt; }
@@ -123,6 +126,8 @@ public:
 	int CheckIntersection(Part& other, bool tangent = false) { return part->CheckIntersection(other, tangent); }
 	// МЦХ: масса в кг, длины в мм
 	std::optional<MassProperties> GetMassProperties() { return part->GetMassProperties(); }
+	// Материал детали: обозначение (идёт в основную надпись и спецификацию) и плотность, г/см³
+	bool SetMaterial(const std::string& name, double density) { return part->SetMaterial(name, density); }
 	// Твёрдые тела; поверхности (тела без объёма) — отдельно
 	int GetBodiesCount() { return part->GetBodiesCount(); }
 	int GetSurfacesCount() { return part->GetSurfacesCount(); }
@@ -147,6 +152,11 @@ public:
 	bool SetAppearance(const Appearance& appearance) { return part->SetAppearance(appearance); }
 	// Все тела — цвета детали («по исходному объекту»); число тел, которые теперь наследуют цвет
 	int InheritBodiesColor() { return part->InheritBodiesColor(); }
+	// Развёртка листовых тел детали: nullopt — листовых тел нет. fixedFace — грань, которая
+	// остаётся на месте (плоская грань листа); без неё КОМПАС развёртку не строит.
+	// Перестраивает документ; true — состояние прочитано после перестроения
+	std::optional<bool> IsSheetMetalUnfolded() { return part->IsSheetMetalUnfolded(); }
+	bool SetSheetMetalUnfolded(bool unfold, const Node* fixedFace = nullptr) { return part->SetSheetMetalUnfolded(unfold, fixedFace); }
 	bool Rebuild() { return part->Rebuild(); }
 	// Все грани и рёбра тел детали (без повторов). Порядок стабилен, пока модель не меняется
 	std::vector<Face> GetFaces() { return part->GetFaces(); }
